@@ -369,6 +369,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
+    <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
 </div>
@@ -1113,6 +1114,12 @@
   }
 
   var pushTimer=null;
+  var lastSyncAt=0;
+  function fmtTime(ts){
+    var d=new Date(ts);
+    function p(n){return (n<10?"0":"")+n;}
+    return p(d.getHours())+":"+p(d.getMinutes());
+  }
   function schedulePush(){
     if(!syncEnabled()) return;
     clearTimeout(pushTimer);
@@ -1129,7 +1136,7 @@
         if(j&&j.sha) body.sha=j.sha;
         return fetch(apiUrl(),{method:"PUT",headers:getHeaders(),body:JSON.stringify(body)});
       })
-      .then(function(r){ if(r&&!r.ok) throw new Error("put "+r.status); setSyncStatus("已同步"); })
+      .then(function(r){ if(r&&!r.ok) throw new Error("put "+r.status); lastSyncAt=Date.now(); setSyncStatus("已同步 "+fmtTime(lastSyncAt)); })
       .catch(function(){ setSyncStatus("同步失败（稍后自动重试）"); });
   }
   function pullFromCloud(){
@@ -1139,12 +1146,17 @@
       .then(function(j){
         if(!j){ pushToCloud(); return; }
         var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-        if((remote._ts||0) > (state._ts||0)){
+        var rt=remote._ts||0, lt=state._ts||0;
+        if(rt > lt){
           adoptRemote(remote);
-          setSyncStatus("已从云端更新");
-          toast("☁️ 已从云端同步最新数据");
-        }else{
+          lastSyncAt=Date.now();
+          setSyncStatus("已从云端更新 "+fmtTime(lastSyncAt));
+          toast("☁️ 已同步最新数据");
+        }else if(lt > rt){
           pushToCloud();
+        }else{
+          lastSyncAt=Date.now();
+          setSyncStatus("已同步 "+fmtTime(lastSyncAt));
         }
       })
       .catch(function(){ setSyncStatus("同步失败（网络？）"); });
@@ -1182,6 +1194,11 @@
     setSyncStatus("未开启同步");
     closeSyncModal();
   }
+  function syncNow(){
+    if(!syncEnabled()){ openSyncModal(); return; }
+    setSyncStatus("同步中…");
+    pullFromCloud();
+  }
   function setSyncStatus(msg){
     var el=document.getElementById("syncStatus");
     if(el) el.textContent="☁️ "+msg;
@@ -1214,6 +1231,7 @@
     else if(t.id==="backfillBtn"){ toggleBackfill(); }
     else if(t.id==="bfSave"){ saveBackfill(); }
     else if(t.id==="syncSetupBtn"){ openSyncModal(); }
+    else if(t.id==="syncNowBtn"){ syncNow(); }
     else if(t.id==="syncSave"){ connectSync(document.getElementById("syncToken").value); }
     else if(t.id==="syncCancel"){ closeSyncModal(); }
     else if(t.id==="syncDisconnect"){ disconnectSync(); }
@@ -1254,10 +1272,13 @@
     navigator.serviceWorker.register("sw.js").catch(function(){});
   }
   setInterval(function(){
-    // 每 60s：检查是否跨天 + 刷新倒计时（只在页面可见时）
-    if(!document.hidden){ checkDayRollover(); renderQuests(); }
-  },60000);
+    // 每 30s：检查是否跨天 + 刷新倒计时 + 云端同步（只在页面可见时）
+    if(!document.hidden){ checkDayRollover(); renderQuests(); if(syncEnabled()) pullFromCloud(); }
+  },30000);
   window.addEventListener("focus", function(){ checkDayRollover(); if(syncEnabled()) pullFromCloud(); });
+  document.addEventListener("visibilitychange", function(){
+    if(!document.hidden && syncEnabled()) pullFromCloud();
+  });
 })();
 </script>
 </body>
