@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>研习魔典 · Grimoire</title>
+<meta name="theme-color" content="#f4ead2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="研习魔典">
+<style>
+  :root{
+    --parchment:#f4ead2;
+    --parchment-2:#ecdfc0;
+    --card:#fbf4e2;
+    --ink:#2a3a2f;
+    --ink-soft:#5c6d5f;
+    --gold:#b8860b;
+    --gold-light:#d4af37;
+    --wine:#7b2d2d;
+    --line:#c9b88a;
+    --shadow:rgba(42,58,47,.16);
+    --common:#8a8a6f;
+    --rare:#3f6f5f;
+    --epic:#6b4a8a;
+    --legend:#b8860b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:Georgia,'Palatino Linotype','Songti SC','STSong','Kaiti SC',serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 50% -100px, rgba(212,175,55,.12), transparent 60%),
+      radial-gradient(900px 700px at 100% 100%, rgba(123,45,45,.07), transparent 55%),
+      var(--parchment);
+    background-attachment:fixed;
+    min-height:100vh;
+    padding:28px 18px 60px;
+  }
+  .app{max-width:1060px;margin:0 auto;}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;align-items:center;gap:20px;
+    padding:20px 26px;margin-bottom:18px;
+    background:linear-gradient(160deg,var(--card),var(--parchment-2));
+    border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 6px 22px var(--shadow);
+    position:relative;overflow:hidden;
+  }
+  header::after{
+    content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;
+    background:radial-gradient(circle,rgba(212,175,55,.18),transparent 70%);
+    border-radius:50%;
+  }
+  .title-wrap{flex:1;}
+  h1{margin:0;font-size:30px;letter-spacing:2px;font-weight:600;}
+  h1 .sigil{color:var(--gold);}
+  .subtitle{margin:4px 0 0;color:var(--ink-soft);font-size:13px;letter-spacing:1px;}
+  .name-line{margin-top:8px;font-size:13px;color:var(--ink-soft);}
+  .name-line b{color:var(--gold);cursor:pointer;}
+  .seal{
+    flex:0 0 auto;width:74px;height:74px;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:#fdf6e3;background:radial-gradient(circle at 35% 30%,#d4af37,#8a5a00 70%);
+    border:3px solid #6d4600;box-shadow:0 4px 14px var(--shadow), inset 0 0 0 3px rgba(255,255,255,.12);
+    font-weight:bold;
+  }
+  .seal .lv{font-size:12px;letter-spacing:1px;opacity:.85;}
+  .seal .num{font-size:26px;line-height:1;}
+  .xp-outer{
+    margin-top:10px;height:9px;background:#e3d6b4;border:1px solid var(--line);
+    border-radius:6px;overflow:hidden;
+  }
+  .xp-inner{
+    height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));
+    transition:width .6s ease;border-radius:6px;
+  }
+  .xp-label{font-size:11px;color:var(--ink-soft);margin-top:4px;letter-spacing:.5px;}
+
+  /* ---------- layout ---------- */
+  main{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;}
+  @media (max-width:880px){main{grid-template-columns:1fr;}}
+  .col{display:flex;flex-direction:column;gap:18px;}
+
+  .panel{
+    background:linear-gradient(160deg,var(--card),#f7efdd);
+    border:1px solid var(--line);border-radius:14px;
+    padding:18px 20px;box-shadow:0 4px 16px var(--shadow);
+  }
+  .panel h2{
+    margin:0 0 14px;font-size:17px;letter-spacing:1px;
+    display:flex;align-items:center;gap:8px;color:var(--ink);
+  }
+  .panel h2::before{content:"✦";color:var(--gold);}
+  .hint{font-size:11px;color:var(--ink-soft);font-weight:normal;letter-spacing:0;margin-left:auto;}
+
+  /* ---------- stats ---------- */
+  .stat-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;position:relative;}
+  .stat-icon{width:26px;text-align:center;font-size:17px;}
+  .stat-label{flex:0 0 54px;font-size:14px;letter-spacing:1px;}
+  .stat-bar-wrap{flex:1;height:15px;background:#e6dabd;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .stat-bar{height:100%;border-radius:8px;transition:width .6s ease;position:relative;}
+  .stat-num{flex:0 0 34px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink-soft);}
+  .bar-int{background:linear-gradient(90deg,#2f6f4f,#4fae7f);}
+  .bar-str{background:linear-gradient(90deg,#8a5a2b,#c98a3a);}
+  .bar-cha{background:linear-gradient(90deg,#3f5f8a,#6f8fcf);}
+  .bar-will{background:linear-gradient(90deg,#6b4a8a,#a06fd0);}
+  .bar-hp{background:linear-gradient(90deg,#7b2d2d,#c94f4f);}
+  .bar-hp.good{background:linear-gradient(90deg,#2f6f4f,#4fae7f);}
+  .bar-hp.mid{background:linear-gradient(90deg,#b8860b,#d4af37);}
+  .bar-hp.low{background:linear-gradient(90deg,#7b2d2d,#c94f4f);}
+  .flash{animation:flash .9s ease;}
+  @keyframes flash{0%{filter:brightness(1.9);}100%{filter:brightness(1);}}
+
+  .rest-row{display:flex;align-items:center;gap:10px;margin-top:6px;padding-top:12px;border-top:1px dashed var(--line);}
+  button{
+    font-family:inherit;cursor:pointer;border-radius:8px;
+    border:1px solid var(--line);background:linear-gradient(160deg,#fffaf0,#f0e6cd);
+    color:var(--ink);padding:7px 12px;font-size:13px;letter-spacing:.5px;
+    transition:transform .08s ease, box-shadow .12s ease;
+  }
+  button:hover{box-shadow:0 2px 8px var(--shadow);}
+  button:active{transform:translateY(1px);}
+  button.primary{background:linear-gradient(160deg,#e8d29a,#d4af37);border-color:#a9861f;color:#3a2c05;font-weight:bold;}
+  button.ghost{background:transparent;border-color:transparent;color:var(--ink-soft);padding:2px 6px;}
+  button.ghost:hover{color:var(--wine);}
+  .rest-note{font-size:11px;color:var(--ink-soft);margin-left:auto;}
+
+  /* ---------- tasks ---------- */
+  .task{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px dashed #e3d6b4;}
+  .task:last-of-type{border-bottom:none;}
+  .task input[type=checkbox]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex:0 0 auto;}
+  .task .name{flex:1;font-size:14px;}
+  .task.done .name{text-decoration:line-through;color:#a89b7c;}
+  .task-stat{font-size:11px;color:var(--ink-soft);flex:0 0 auto;white-space:nowrap;}
+  .task .del{color:#b09b72;flex:0 0 auto;}
+  .add-row{display:flex;gap:8px;margin-top:12px;}
+  .add-row input[type=text]{flex:1;font-family:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fffdf5;color:var(--ink);}
+  .add-row select{font-family:inherit;font-size:13px;padding:7px;border:1px solid var(--line);border-radius:8px;background:#fffdf5;color:var(--ink);}
+  .repeat-label{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ink-soft);white-space:nowrap;cursor:pointer;}
+  .repeat-label input{accent-color:var(--gold);}
+  .repeat-badge{flex:0 0 auto;font-size:10px;color:var(--gold);border:1px solid var(--gold);border-radius:9px;padding:0 5px;margin-left:4px;}
+  .hist-summary{font-size:12px;color:var(--ink-soft);margin:2px 0 8px;}
+  .heatmap{display:flex;gap:3px;overflow-x:auto;padding-bottom:4px;}
+  .hm-week{display:flex;flex-direction:column;gap:3px;}
+  .hm-cell{width:12px;height:12px;border-radius:3px;display:block;flex:0 0 auto;}
+  .hm-empty{background:transparent;border:1px dashed #d9ccb0;}
+  .hm-lv0{background:#ece1c2;}
+  .hm-lv1{background:#e6d29b;}
+  .hm-lv2{background:#d8bb66;}
+  .hm-lv3{background:#c49f3c;}
+  .hm-lv4{background:#a67c22;}
+  .hist-legend{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--ink-soft);margin-top:6px;}
+  .hist-legend .hm-cell{width:10px;height:10px;}
+  .hist-list{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px;max-height:200px;overflow-y:auto;}
+  .hist-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;}
+  .hist-date{flex:0 0 auto;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+  .hist-name{flex:1;color:var(--ink);}
+  .hist-stat{flex:0 0 auto;color:var(--gold);font-size:11px;}
+  .backfill{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;}
+  .backfill input[type=text]{flex:1;min-width:130px;font-family:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:#fffdf5;color:var(--ink);}
+  .backfill input[type=date]{font-family:inherit;font-size:13px;padding:6px;border:1px solid var(--line);border-radius:8px;background:#fffdf5;color:var(--ink);}
+  .backfill select{font-family:inherit;font-size:13px;padding:6px;border:1px solid var(--line);border-radius:8px;background:#fffdf5;color:var(--ink);}
+  .life-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;flex-wrap:wrap;}
+  .life-row + .life-row{border-top:1px dashed var(--line);}
+  .life-label{flex:0 0 auto;color:var(--ink);font-weight:600;}
+  .life-val{flex:1;color:var(--ink-soft);}
+  .life-hint{font-size:11px;color:var(--ink-soft);margin:-2px 0 6px;}
+  .mood-row{display:flex;gap:4px;}
+  .mood-btn{font-size:17px;line-height:1;padding:3px 7px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;opacity:.45;}
+  .mood-btn.on{opacity:1;border-color:var(--gold);background:#fff6dd;}
+  .en-btn{font-size:12px;line-height:1;padding:3px 9px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;opacity:.45;font-variant-numeric:tabular-nums;}
+  .en-btn.on{opacity:1;border-color:var(--gold);background:#fff6dd;}
+  .mood-strip{font-size:15px;letter-spacing:2px;}
+
+  /* ---------- quests ---------- */
+  .quest{background:#fffaf0;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;}
+  .quest-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .quest-name{flex:1;font-size:14px;font-weight:bold;letter-spacing:.5px;}
+  .countdown{font-size:12px;flex:0 0 auto;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+  .cd-far{background:#e3f0e3;color:#2f6f4f;}
+  .cd-near{background:#f5ead0;color:#9a7410;}
+  .cd-over{background:#f3dede;color:#7b2d2d;}
+  .quest-step{display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;color:var(--ink-soft);}
+  .quest-step input{accent-color:var(--gold);cursor:pointer;}
+  .quest-step.done label{text-decoration:line-through;color:#a89b7c;}
+  .quest-step label{flex:1;cursor:pointer;}
+  .quest-edit{font-size:10px;color:#b09b72;cursor:pointer;border-bottom:1px dotted #c9b88a;}
+  .quest-progress{height:5px;background:#e6dabd;border-radius:3px;overflow:hidden;margin-top:8px;}
+  .quest-progress i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));transition:width .4s ease;}
+
+  /* ---------- grimoire cards ---------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+  .card{
+    border-radius:10px;padding:12px 10px;text-align:center;min-height:140px;
+    background:#fffaf0;border:1px solid var(--line);position:relative;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .card:hover{transform:translateY(-3px);}
+  .card .emoji{font-size:34px;line-height:1;}
+  .card .cname{font-size:13px;font-weight:bold;letter-spacing:1px;}
+  .card .rarity{font-size:10px;letter-spacing:2px;}
+  .card .ctext{font-size:10px;color:var(--ink-soft);line-height:1.4;margin-top:2px;}
+  .card.locked{filter:grayscale(.8);opacity:.62;border-style:dashed;}
+  .card.locked .emoji{filter:grayscale(1);}
+  .card.locked .cname{color:#a89b7c;}
+  .rarity-common{border-color:var(--common);}
+  .rarity-common .rarity{color:var(--common);}
+  .rarity-rare{border-color:var(--rare);box-shadow:0 0 0 1px var(--rare) inset;}
+  .rarity-rare .rarity{color:var(--rare);}
+  .rarity-epic{border-color:var(--epic);box-shadow:0 0 0 1px var(--epic) inset;}
+  .rarity-epic .rarity{color:var(--epic);}
+  .rarity-legend{border-color:var(--legend);box-shadow:0 0 0 1px var(--legend) inset, 0 0 14px rgba(184,134,11,.35);}
+  .rarity-legend .rarity{color:var(--legend);}
+  .collect-count{font-size:11px;color:var(--ink-soft);margin-bottom:10px;letter-spacing:.5px;}
+
+  /* ---------- footer / data ---------- */
+  footer{
+    margin-top:18px;display:flex;gap:10px;align-items:center;justify-content:center;
+    font-size:11px;color:var(--ink-soft);flex-wrap:wrap;
+  }
+
+  /* ---------- toast & modal ---------- */
+  #toast{
+    position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fdf6e3;padding:11px 20px;border-radius:24px;
+    font-size:14px;letter-spacing:.5px;box-shadow:0 8px 26px rgba(0,0,0,.3);
+    opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;z-index:50;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #modal{
+    position:fixed;inset:0;background:rgba(42,58,47,.55);display:none;
+    align-items:center;justify-content:center;z-index:100;padding:20px;
+  }
+  #modal.show{display:flex;}
+  .modal-box{
+    background:linear-gradient(160deg,#fffaf0,#f0e6cd);border:2px solid var(--gold);
+    border-radius:16px;padding:26px 30px;max-width:460px;width:100%;
+    text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);
+    animation:pop .3s ease;
+  }
+  @keyframes pop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .modal-box h3{margin:0 0 6px;letter-spacing:2px;}
+  .modal-box .reveal{font-size:13px;color:var(--ink-soft);margin-bottom:16px;}
+  .reveal-card{display:flex;align-items:center;gap:14px;text-align:left;margin:10px 0;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#fffdf5;}
+  .reveal-card .emoji{font-size:30px;}
+  .reveal-card .rname{font-weight:bold;letter-spacing:1px;}
+  .reveal-card .rrarity{font-size:10px;letter-spacing:2px;}
+  .reveal-card .rtext{font-size:11px;color:var(--ink-soft);}
+
+  /* ---------- 手机端 ---------- */
+  @media (max-width:560px){
+    body{padding:14px 10px 56px;}
+    header{padding:14px 16px;gap:12px;}
+    h1{font-size:22px;letter-spacing:1px;}
+    .seal{width:56px;height:56px;}
+    .seal .num{font-size:20px;}
+    .panel{padding:14px 14px;}
+    .add-row{flex-wrap:wrap;}
+    .add-row input[type=text]{flex:1 1 100%;}
+    .add-row select{flex:1 1 42%;}
+    button{padding:9px 12px;min-height:38px;}
+    .task{padding:9px 2px;gap:8px;}
+    .task .name{font-size:13px;}
+    .stat-label{flex-basis:48px;font-size:13px;}
+    .modal-box{padding:22px 18px;}
+    .backfill input[type=text]{min-width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="title-wrap">
+      <h1><span class="sigil">✦</span> 研习魔典 <span class="sigil">✦</span></h1>
+      <p class="subtitle">把每一天的努力，酿成魔法</p>
+      <p class="name-line">学徒：<b id="charName">——</b></p>
+    </div>
+    <div class="seal" title="等级">
+      <span class="lv">Lv.</span>
+      <span class="num" id="sealLv">1</span>
+    </div>
+  </header>
+
+  <div class="xp-outer"><div class="xp-inner" id="xpBar" style="width:0%"></div></div>
+  <div class="xp-label" id="xpLabel">经验 0 / 100</div>
+
+  <main>
+    <div class="col">
+      <section class="panel">
+        <h2>属性卷轴 <span class="hint">完成日课以提升</span></h2>
+        <div id="stats"></div>
+        <div class="rest-row">
+          <button class="primary" id="restBtn">🛌 小憩回血</button>
+          <span class="rest-note" id="restNote">今日剩余 2 次</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>今日日课 <span class="hint" id="dayLabel">勾选即得属性与经验</span></h2>
+        <div id="tasks"></div>
+        <div class="add-row">
+          <input type="text" id="newTask" placeholder="添加一件今天要做的事…" maxlength="40">
+          <select id="newStat">
+            <option value="int">智力</option>
+            <option value="str">体力</option>
+            <option value="cha">魅力</option>
+            <option value="will">意志</option>
+          </select>
+          <select id="newRepeat">
+            <option value="once">一次性</option>
+            <option value="daily">每日</option>
+            <option value="weekly">每周</option>
+          </select>
+          <button id="addTask">＋</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>🌿 生活 <span class="hint">照顾好自己</span></h2>
+        <div id="life"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <h2>主线任务 <span class="hint">点击日期可修改</span></h2>
+        <div id="quests"></div>
+      </section>
+
+      <section class="panel">
+        <h2>图鉴 <span class="hint">做到即解锁</span></h2>
+        <div class="collect-count" id="collectCount"></div>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <section class="panel">
+        <h2>🗓️ 足迹 <span class="hint">过去做了什么</span></h2>
+        <div class="hist-summary" id="histSummary"></div>
+        <div class="heatmap" id="heatmap"></div>
+        <div class="hist-legend"><span>少</span><i class="hm-cell hm-lv0"></i><i class="hm-cell hm-lv1"></i><i class="hm-cell hm-lv2"></i><i class="hm-cell hm-lv3"></i><i class="hm-cell hm-lv4"></i><span>多</span></div>
+        <div class="hist-list" id="histList"></div>
+        <button class="ghost" id="backfillBtn">＋ 补记过去做过的日课</button>
+        <div class="backfill" id="backfillBox" style="display:none;">
+          <input type="text" id="bfName" placeholder="做了什么" maxlength="40">
+          <input type="date" id="bfDate">
+          <select id="bfStat">
+            <option value="int">智力</option>
+            <option value="str">体力</option>
+            <option value="cha">魅力</option>
+            <option value="will">意志</option>
+          </select>
+          <button class="primary" id="bfSave">记下</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <button id="exportBtn">📦 导出存档</button>
+    <button id="importBtn">📥 导入存档</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+    <button id="resetBtn">⚠️ 重置</button>
+    <span id="syncStatus">☁️ 未开启同步</span>
+    <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
+  </footer>
+</div>
+
+<div id="toast"></div>
+<div id="modal"><div class="modal-box" id="modalBox"></div></div>
+<div id="syncModal" style="display:none;position:fixed;inset:0;background:rgba(42,58,47,.55);z-index:110;align-items:center;justify-content:center;padding:20px;">
+  <div class="modal-box" style="text-align:left;">
+    <h3 style="text-align:center;">☁️ 云端同步</h3>
+    <p class="reveal" style="text-align:center;">粘贴你的 GitHub 令牌，就能在电脑和手机间共享数据。</p>
+    <input type="password" id="syncToken" placeholder="粘贴令牌（ghp_… 或 github_pat_…）" style="width:100%;padding:11px;font-size:14px;border:1px solid var(--line);border-radius:8px;background:#fffdf5;color:var(--ink);margin:8px 0 16px;font-family:inherit;">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="primary" id="syncSave">连接并同步</button>
+      <button class="ghost" id="syncCancel">取消</button>
+      <button class="ghost" id="syncDisconnect" style="color:var(--wine);margin-left:auto;display:none;">断开同步</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- 常量 ----------
+  var STAT_GAIN = 5;      // 完成日课：属性 +
+  var XP_GAIN = 10;       // 完成日课：经验 +
+  var HP_COST = 6;        // 完成日课：血条 -
+  var REST_HP = 30;       // 小憩回血
+  var REST_STR = 3;       // 小憩附带体力
+  var REST_LIMIT = 2;     // 每日小憩次数
+  var XP_PER_LEVEL = 100;
+  var PERIOD_DAYS = 7;        // 经期总天数
+  var NO_EXERCISE_DAYS = 5;   // 前 N 天暂停体力日课（后两天可恢复锻炼）
+  var CYCLE_DAYS = 37;        // 经期开始到下次开始（7 天 + 结束后约 30 天）
+  var MOODS = [
+    {e:"😄",label:"很好"},
+    {e:"🙂",label:"还行"},
+    {e:"😐",label:"一般"},
+    {e:"😣",label:"有点累"},
+    {e:"😞",label:"不好"}
+  ];
+
+  var STAT_META = {
+    int:{label:"智力",icon:"🧠",cls:"bar-int",desc:"动脑：阅读 / 学习 / 科研 / 写作"},
+    str:{label:"体力",icon:"💪",cls:"bar-str",desc:"动身体：锻炼 / 运动"},
+    cha:{label:"魅力",icon:"🗣️",cls:"bar-cha",desc:"对人：社交 / 沟通 / 套磁 / 面试"},
+    will:{label:"意志",icon:"🧭",cls:"bar-will",desc:"对己：自律 / 坚持 / 扛住难事"}
+  };
+
+  var CARDS = [
+    {id:"c1",name:"初入魔道",emoji:"🕯️",rarity:"普通",text:"点亮第一根蜡烛。",cond:function(s){return s.totalDone>=1;}},
+    {id:"c2",name:"勤学苦练",emoji:"📖",rarity:"普通",text:"累计完成五次日课。",cond:function(s){return s.totalDone>=5;}},
+    {id:"c3",name:"智慧之泉",emoji:"🧠",rarity:"稀有",text:"智力达到 40。",cond:function(s){return s.stats.int>=40;}},
+    {id:"c4",name:"钢铁之躯",emoji:"💪",rarity:"稀有",text:"体力达到 40。",cond:function(s){return s.stats.str>=40;}},
+    {id:"c5",name:"银舌",emoji:"🗣️",rarity:"稀有",text:"魅力达到 40。",cond:function(s){return s.stats.cha>=40;}},
+    {id:"c6",name:"不屈之魂",emoji:"🧭",rarity:"稀有",text:"意志达到 40。",cond:function(s){return s.stats.will>=40;}},
+    {id:"c7",name:"血之彼岸",emoji:"🌘",rarity:"史诗",text:"血条一度跌到 40 以下。",cond:function(s){return s.hpMin<40;}},
+    {id:"c8",name:"破晓者",emoji:"⚔️",rarity:"史诗",text:"任一项属性达到 60。",cond:function(s){return Math.max(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)>=60;}},
+    {id:"c9",name:"四象归一",emoji:"✨",rarity:"史诗",text:"四项属性均达到 30。",cond:function(s){return ["int","str","cha","will"].every(function(k){return s.stats[k]>=30;});}},
+    {id:"c10",name:"研习大师",emoji:"🔮",rarity:"传说",text:"达到 5 级。",cond:function(s){return levelOf(s)>=5;}}
+  ];
+
+  var RARITY_CLASS = {"普通":"rarity-common","稀有":"rarity-rare","史诗":"rarity-epic","传说":"rarity-legend"};
+
+  // ---------- 状态 ----------
+  function uid(){return Date.now().toString(36) + Math.random().toString(36).slice(2,7);}
+  function defaultProgress(){
+    return {
+      _ts:0,
+      name:"田一婷",
+      xp:0,
+      stats:{int:0,str:0,cha:0,will:0},
+      hp:100,
+      hpMin:100,
+      totalDone:0,
+      lastLevel:1,
+      restDate:"",
+      restUsed:0,
+      dayKey:"",
+      quests:[
+        {id:uid(),name:"🇪🇲 EMBL 国际 PhD（策略 B）",deadline:"2026-10-12",steps:[{name:"确定意向组（Stegle/Birney/Lees…）",done:false},{name:"准备申请材料",done:false},{name:"确认 2 位推荐人",done:false},{name:"提交",done:false}]},
+        {id:uid(),name:"🇨🇭 ETH/UZH Life Science Zurich Graduate School",deadline:"2026-11-01",steps:[{name:"选 Evolutionary + Computational Biology",done:false},{name:"准备材料",done:false},{name:"提交",done:false}]},
+        {id:uid(),name:"🇨🇳 CSC 国家留学基金委奖学金申请",deadline:"2027-01-15",steps:[{name:"了解 CSC 申请要求与项目",done:false},{name:"准备材料",done:false},{name:"提交",done:false}]}
+      ],
+      unlocked:[],
+      history:[],
+      periodStart:"",
+      outDays:[],
+      moods:{},
+      energies:{}
+    };
+  }
+  function defaultTasks(){
+    return [
+      {id:uid(),name:"准备 Claude Bhérer 套瓷信",stat:"cha",done:false},
+      {id:uid(),name:"准备 Andrew Doxey 套瓷信",stat:"cha",done:false},
+      {id:uid(),name:"整理 2 位导师的申请材料（CV 等）",stat:"int",done:false},
+      {id:uid(),name:"设置周一（9/14）定时发送 2 封套瓷信",stat:"will",done:false},
+      {id:uid(),name:"读 1 篇统计遗传方法论文",stat:"int",done:false,repeat:"daily"},
+      {id:uid(),name:"锻炼 30 分钟",stat:"str",done:false,repeat:"daily"}
+    ];
+  }
+
+  var state;
+  var PROGRESS_KEY = "grimoire_progress_v1";
+  var TASKS_KEY = "grimoire_tasks_v1";
+
+  // 云端同步配置：SYNC_OWNER 在部署时替换成你的 GitHub 用户名
+  var SYNC_TOKEN_KEY = "grimoire_sync_token";
+  var SYNC_OWNER = "tianyiting0108-rgb";
+  var SYNC_REPO = "grimoire-data";     // 存放数据的私密仓库
+  var SYNC_FILE = "data.json";
+
+  // 旧版（grimoire_v1..v6）是单一 key，首次打开自动拆成「进度」+「任务」两份
+  function migrateOld(){
+    for(var i=6;i>=1;i--){
+      var raw=localStorage.getItem("grimoire_v"+i);
+      if(!raw) continue;
+      try{
+        var old=JSON.parse(raw);
+        var prog={};
+        for(var k in old){ if(k!=="tasks") prog[k]=old[k]; }
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(prog));
+        localStorage.setItem(TASKS_KEY, JSON.stringify(old.tasks||defaultTasks()));
+        localStorage.removeItem("grimoire_v"+i);
+        return;
+      }catch(e){}
+    }
+  }
+  function load(){
+    migrateOld();
+    var p=null, t=null;
+    try{ p=JSON.parse(localStorage.getItem(PROGRESS_KEY)); }catch(e){}
+    try{ t=JSON.parse(localStorage.getItem(TASKS_KEY)); }catch(e){}
+    state = defaultProgress();
+    if(p){ for(var k in p){ state[k]=p[k]; } }
+    state.tasks = (t && t.length!==undefined) ? t : defaultTasks();
+    state.tasks.forEach(function(tk){ if(tk.repeat===true) tk.repeat="daily"; });
+    seedHistory911();
+    seedLife();
+  }
+  function persist(){
+    var prog={};
+    for(var k in state){ if(k!=="tasks") prog[k]=state[k]; }
+    try{ localStorage.setItem(PROGRESS_KEY, JSON.stringify(prog)); }catch(e){}
+    try{ localStorage.setItem(TASKS_KEY, JSON.stringify(state.tasks)); }catch(e){}
+  }
+  function save(){
+    state._ts = Date.now();
+    persist();
+    schedulePush();
+  }
+  // 一次性补记：把 2026-09-11 的日课足迹 + 成长收益写回（按数据去重，避免重复/导入后再次叠加）
+  function seedHistory911(){
+    var FLAG="grimoire_seed_911b";
+    if(localStorage.getItem(FLAG)) return;
+
+    var h=state.history||[];
+    var has911 = h.some(function(x){ return x.d==="2026-09-11"; });
+    if(has911){ localStorage.setItem(FLAG,"1"); persist(); return; }
+
+    var seed=[
+      {d:"2026-09-11",n:"准备 Claude Bhérer 套瓷信",s:"cha"},
+      {d:"2026-09-11",n:"准备 Andrew Doxey 套瓷信",s:"cha"},
+      {d:"2026-09-11",n:"整理 2 位导师的申请材料（CV 等）",s:"int"},
+      {d:"2026-09-11",n:"设置周一（9/14）定时发送 2 封套瓷信",s:"will"}
+    ];
+    state.history = (seed.concat(h)).sort(function(a,b){ return a.d<b.d?-1:(a.d>b.d?1:0); });
+
+    state.stats.cha = clamp((state.stats.cha||0) + 10, 0, 999);
+    state.stats.int = clamp((state.stats.int||0) + 5, 0, 999);
+    state.stats.will = clamp((state.stats.will||0) + 5, 0, 999);
+    state.xp = clamp((state.xp||0) + 40, 0, 99999);
+    state.totalDone = clamp((state.totalDone||0) + 4, 0, 999999);
+
+    var lv=levelOf(state);
+    if(lv>state.lastLevel) state.lastLevel=lv;
+    CARDS.forEach(function(c){
+      if(state.unlocked.indexOf(c.id)<0 && c.cond(state)) state.unlocked.push(c.id);
+    });
+
+    localStorage.setItem(FLAG,"1");
+    persist();
+  }
+  // 一次性：记录当前经期开始日（2026-09-12）
+  function seedLife(){
+    var FLAG="grimoire_seed_life";
+    if(localStorage.getItem(FLAG)) return;
+    if(!state.periodStart) state.periodStart="2026-09-12";
+    localStorage.setItem(FLAG,"1");
+    persist();
+  }
+  function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
+  function levelOf(s){return 1 + Math.floor(s.xp / XP_PER_LEVEL);}
+  // 一天从凌晨 2 点开始（熬夜的话 1 点还算「今天」）
+  function dayKey(){
+    var d=new Date(Date.now()-2*3600*1000);
+    function p(n){return (n<10?"0":"")+n;}
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+  }
+  function dayLabel(){
+    var k=dayKey().split("-");
+    return parseInt(k[1],10)+"月"+parseInt(k[2],10)+"日";
+  }
+  function checkDayRollover(){
+    var k=dayKey();
+    if(!state.dayKey){ state.dayKey=k; return; } // 首次加载，只初始化
+    if(state.dayKey===k) return;
+    state.tasks.forEach(function(t){
+      if(t.repeat==="daily"){ t.done=false; }
+      else if(t.repeat==="weekly" && t.done && t.weekDone!==weekKey()){ t.done=false; }
+    });
+    state.restDate=k; state.restUsed=0;
+    state.dayKey=k;
+    save(); render();
+    toast("🌅 新的一天，每日日课已刷新");
+  }
+
+  // ---------- 渲染 ----------
+  var toastTimer=null;
+  function toast(msg){
+    var el=document.getElementById("toast");
+    el.textContent=msg; el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){el.classList.remove("show");},2600);
+  }
+
+  function render(){
+    renderHeader(); renderStats(); renderTasks(); renderQuests(); renderCards(); renderHistory(); renderLife();
+  }
+
+  function renderHeader(){
+    document.getElementById("charName").textContent = state.name;
+    var lv=levelOf(state);
+    document.getElementById("sealLv").textContent=lv;
+    var inLv = state.xp % XP_PER_LEVEL;
+    document.getElementById("xpBar").style.width=(inLv/XP_PER_LEVEL*100)+"%";
+    document.getElementById("xpLabel").textContent="经验 "+inLv+" / "+XP_PER_LEVEL+" · 累计 "+state.xp;
+    var dl=document.getElementById("dayLabel");
+    if(dl) dl.textContent=dayLabel()+" · 勾选即得属性与经验";
+  }
+
+  function renderStats(){
+    var html="";
+    for(var k in STAT_META){
+      var m=STAT_META[k];
+      html+='<div class="stat-row" data-stat="'+k+'" title="'+m.desc+'">'
+        +'<span class="stat-icon">'+m.icon+'</span>'
+        +'<span class="stat-label">'+m.label+'</span>'
+        +'<div class="stat-bar-wrap"><div class="stat-bar '+m.cls+'" style="width:'+Math.min(100,state.stats[k])+'%"></div></div>'
+        +'<span class="stat-num">'+state.stats[k]+'</span>'
+        +'</div>';
+    }
+    // 血条
+    var hp=state.hp;
+    var cls = hp>=60 ? "bar-hp good" : (hp>=35 ? "bar-hp mid" : "bar-hp low");
+    html+='<div class="stat-row" data-stat="hp" title="精力：当下能量状态，会消耗、会恢复">'
+      +'<span class="stat-icon">🩸</span>'
+      +'<span class="stat-label">血条</span>'
+      +'<div class="stat-bar-wrap"><div class="stat-bar '+cls+'" style="width:'+hp+'%"></div></div>'
+      +'<span class="stat-num">'+hp+'</span>'
+      +'</div>';
+    document.getElementById("stats").innerHTML=html;
+
+    var today=dayKey();
+    var used = (state.restDate===today)?state.restUsed:0;
+    document.getElementById("restNote").textContent="今日剩余 "+(REST_LIMIT-used)+" 次 · 血条反映当前精力";
+  }
+
+  function statLabel(k){return STAT_META[k]?STAT_META[k].label:k;}
+
+  function renderTasks(){
+    var wrap=document.getElementById("tasks");
+    // 过滤掉「暂停中」的任务（resume 为未来某天）
+    var visible=state.tasks.filter(function(t){
+      if(t.resume && dayKey()<t.resume) return false;
+      if(t.stat==="str" && exercisePaused()) return false;
+      return true;
+    });
+    if(visible.length===0){
+      wrap.innerHTML='<div class="hint" style="margin:6px 0;">今天还没有日课，下面添加一件吧。</div>';
+      return;
+    }
+    var html="";
+    visible.forEach(function(t){
+      html+='<div class="task'+(t.done?" done":"")+'">'
+        +'<input type="checkbox" data-id="'+t.id+'" '+(t.done?"checked":"")+'>'
+        +'<span class="name">'+esc(t.name)+(t.repeat==="daily"?' <span class="repeat-badge" title="每日重复">↻每日</span>':(t.repeat==="weekly"?' <span class="repeat-badge" title="每周重复">↻每周</span>':''))+'</span>'
+        +'<span class="task-stat">+'+STAT_GAIN+' '+statLabel(t.stat)+' · +'+XP_GAIN+' 经验</span>'
+        +'<button class="ghost del" data-del="'+t.id+'" title="删除">✕</button>'
+        +'</div>';
+    });
+    wrap.innerHTML=html;
+  }
+
+  function renderQuests(){
+    var wrap=document.getElementById("quests");
+    if(state.quests.length===0){wrap.innerHTML='<div class="hint">暂无主线任务。</div>';return;}
+    var html="";
+    var today=new Date(); today.setHours(0,0,0,0);
+    state.quests.forEach(function(q){
+      var done=q.steps.filter(function(s){return s.done;}).length;
+      var total=q.steps.length;
+      var pct= total? Math.round(done/total*100):0;
+      var cd=countdownHTML(q.deadline,today);
+      html+='<div class="quest">'
+        +'<div class="quest-head"><span class="quest-name">'+esc(q.name)+'</span>'
+        +'<span class="countdown '+cd.cls+'">'+cd.text+'</span></div>';
+      q.steps.forEach(function(st){
+        html+='<div class="quest-step'+(st.done?" done":"")+'">'
+          +'<input type="checkbox" data-quest="'+q.id+'" data-step="'+esc(st.name)+'" '+(st.done?"checked":"")+'>'
+          +'<label>'+esc(st.name)+'</label></div>';
+      });
+      html+='<div class="quest-progress"><i style="width:'+pct+'%"></i></div>'
+        +'<div style="margin-top:6px;text-align:right;"><span class="quest-edit" data-deadline="'+q.id+'">🗓 '+esc(q.deadline)+'（点击改期）</span></div>'
+        +'</div>';
+    });
+    wrap.innerHTML=html;
+  }
+
+  function countdownHTML(deadline,today){
+    if(!deadline) return {text:"无截止",cls:"cd-far"};
+    var d=new Date(deadline+"T00:00:00");
+    if(isNaN(d.getTime())) return {text:esc(deadline),cls:"cd-far"};
+    var diff=Math.round((d-today)/86400000);
+    if(diff<0) return {text:"已逾期 "+( -diff)+" 天",cls:"cd-over"};
+    if(diff===0) return {text:"今天截止",cls:"cd-over"};
+    if(diff<=7) return {text:"剩 "+diff+" 天",cls:"cd-near"};
+    return {text:"剩 "+diff+" 天",cls:"cd-far"};
+  }
+
+  function renderCards(){
+    var unlocked=state.unlocked;
+    var count=unlocked.length;
+    document.getElementById("collectCount").textContent="已收集 "+count+" / "+CARDS.length;
+    var html="";
+    CARDS.forEach(function(c){
+      var isUnlocked = unlocked.indexOf(c.id)>=0;
+      var rc=RARITY_CLASS[c.rarity]||"rarity-common";
+      html+='<div class="card '+rc+(isUnlocked?"":" locked")+'">'
+        +'<div class="emoji">'+(isUnlocked?c.emoji:"❓")+'</div>'
+        +'<div class="cname">'+(isUnlocked?c.name:"？？？")+'</div>'
+        +'<div class="rarity">'+c.rarity+'</div>'
+        +'<div class="ctext">'+(isUnlocked?c.text:"解锁条件："+c.text)+'</div>'
+        +'</div>';
+    });
+    document.getElementById("cards").innerHTML=html;
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  // ---------- 足迹 / 历史记录 ----------
+  function weekdayOfKey(key){
+    var p=key.split("-");
+    var d=new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10), 12,0,0);
+    return (d.getDay()+6)%7; // 周一=0 .. 周日=6
+  }
+  function dayKeyOffset(n){
+    var d=new Date(Date.now()-2*3600*1000 - n*86400000);
+    function p(x){return (x<10?"0":"")+x;}
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+  }
+  function heatLevel(n){
+    if(!n) return "hm-lv0";
+    if(n===1) return "hm-lv1";
+    if(n===2) return "hm-lv2";
+    if(n<=4) return "hm-lv3";
+    return "hm-lv4";
+  }
+  function fmtDay(key){
+    var p=key.split("-");
+    return parseInt(p[1],10)+"/"+parseInt(p[2],10);
+  }
+  function renderHistory(){
+    var hist=state.history||[];
+    var countMap={};
+    hist.forEach(function(h){ countMap[h.d]=(countMap[h.d]||0)+1; });
+
+    var weekTotal=0;
+    for(var i=0;i<7;i++){ weekTotal+=(countMap[dayKeyOffset(i)]||0); }
+    document.getElementById("histSummary").textContent="累计完成 "+state.totalDone+" 次日课 · 近 7 天 "+weekTotal+" 次";
+
+    var weeks=12, todayWd=weekdayOfKey(dayKey());
+    var html="";
+    for(var w=0;w<weeks;w++){
+      html+='<div class="hm-week">';
+      for(var d=0;d<7;d++){
+        var offset=(weeks-1-w)*7 + (todayWd-d);
+        if(offset<0){ html+='<i class="hm-cell hm-empty"></i>'; continue; }
+        var key=dayKeyOffset(offset);
+        var c=countMap[key]||0;
+        html+='<i class="hm-cell '+heatLevel(c)+'" title="'+fmtDay(key)+'：完成 '+c+' 次"></i>';
+      }
+      html+='</div>';
+    }
+    document.getElementById("heatmap").innerHTML=html;
+
+    var list=document.getElementById("histList");
+    if(hist.length===0){
+      list.innerHTML='<div class="hint">还没有完成记录，去勾一个日课试试吧。</div>';
+      return;
+    }
+    var recent=hist.slice(-15).reverse();
+    var items=recent.map(function(h){
+      return '<div class="hist-item"><span class="hist-date">'+fmtDay(h.d)+'</span>'
+        +'<span class="hist-name">'+esc(h.n)+'</span>'
+        +'<span class="hist-stat">+'+statLabel(h.s)+'</span></div>';
+    }).join("");
+    list.innerHTML=items;
+  }
+
+  function toggleBackfill(){
+    var box=document.getElementById("backfillBox");
+    var show = box.style.display==="none";
+    box.style.display = show ? "flex" : "none";
+    if(show){
+      document.getElementById("bfDate").value = dayKey();
+      document.getElementById("bfName").value = "";
+      document.getElementById("bfName").focus();
+    }
+  }
+  function saveBackfill(){
+    var name=document.getElementById("bfName").value.trim();
+    var date=document.getElementById("bfDate").value;
+    var stat=document.getElementById("bfStat").value;
+    if(!name){ toast("先写做了什么"); return; }
+    if(!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast("日期格式应为 YYYY-MM-DD"); return; }
+    (state.history=state.history||[]).push({d:date,n:name,s:stat});
+    save(); render();
+    toast("已补记 "+date+"「"+name+"」");
+  }
+
+  // ---------- 生活：经期 / 出门 / 状态 ----------
+  function daysBetween(a,b){
+    var pa=a.split("-"), pb=b.split("-");
+    var da=new Date(pa[0],pa[1]-1,pa[2]);
+    var db=new Date(pb[0],pb[1]-1,pb[2]);
+    return Math.round((db-da)/86400000);
+  }
+  function addDaysKey(key,n){
+    var p=key.split("-");
+    var d=new Date(p[0],p[1]-1,p[2]+n);
+    function z(x){return (x<10?"0":"")+x;}
+    return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());
+  }
+  function weekKey(){
+    var wd=weekdayOfKey(dayKey());
+    return dayKeyOffset(wd);
+  }
+  function exercisePaused(){
+    if(!state.periodStart) return false;
+    var n=daysBetween(state.periodStart, dayKey());
+    return n>=0 && n<NO_EXERCISE_DAYS;
+  }
+  function periodInfo(){
+    if(!state.periodStart) return null;
+    var n=daysBetween(state.periodStart, dayKey());
+    if(n<0) return {before:true};
+    if(n>=PERIOD_DAYS) return {after:true, next:addDaysKey(state.periodStart, CYCLE_DAYS)};
+    return {day:n+1, total:PERIOD_DAYS, pauseLeft:Math.max(0, NO_EXERCISE_DAYS-(n+1)), next:addDaysKey(state.periodStart, CYCLE_DAYS)};
+  }
+  function outStreak(){
+    var set={};
+    (state.outDays||[]).forEach(function(d){ set[d]=1; });
+    var n = set[dayKey()] ? 0 : 1;
+    var streak=0;
+    while(set[dayKeyOffset(n)]){ streak++; n++; }
+    return streak;
+  }
+  function renderLife(){
+    var html="";
+
+    // 经期
+    var pi=periodInfo();
+    if(!state.periodStart){
+      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">还没记录</span><button class="ghost" id="markPeriodBtn">今天来了</button></div>';
+    }else if(pi && pi.day){
+      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">第 '+pi.day+' / '+pi.total+' 天</span></div>';
+      html+='<div class="life-hint">'+(pi.pauseLeft>0?('体力日课暂停，还剩 '+pi.pauseLeft+' 天可恢复'):'现在可以恢复锻炼了')+' · 预计下次 '+fmtDay(pi.next)+'</div>';
+    }else if(pi && pi.before){
+      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">'+fmtDay(state.periodStart)+' 开始（还没到）</span></div>';
+    }else{
+      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">已结束 · 预计下次 '+fmtDay(pi.next)+'</span></div>';
+    }
+
+    // 出门
+    var outToday = (state.outDays||[]).indexOf(dayKey())>=0;
+    html+='<div class="life-row"><span class="life-label">🚶 出门</span>'
+      +'<span class="life-val">'+(outToday?"今天已出门":"今天还没出门")+' · 连续 '+outStreak()+' 天</span>'
+      +'<button class="ghost" id="outBtn">'+(outToday?"撤销":"标记出门")+'</button></div>';
+
+    // 心情
+    var moodIdx = (state.moods && state.moods[dayKey()]!=null) ? state.moods[dayKey()] : null;
+    var moodBtns = MOODS.map(function(m,i){
+      return '<button class="mood-btn'+(moodIdx===i?" on":"")+'" data-mood="'+i+'" title="'+m.label+'">'+m.e+'</button>';
+    }).join("");
+    html+='<div class="life-row"><span class="life-label">🧘 心情</span><span class="mood-row">'+moodBtns+'</span></div>';
+
+    // 近 7 天心情
+    var strip="";
+    for(var i=6;i>=0;i--){
+      var k=dayKeyOffset(i);
+      var mi=(state.moods&&state.moods[k]!=null)?state.moods[k]:-1;
+      strip += (mi>=0) ? MOODS[mi].e : "·";
+    }
+    html+='<div class="life-row"><span class="life-label">近7天</span><span class="mood-strip">'+strip+'</span></div>';
+
+    // 精力
+    var en = (state.energies && state.energies[dayKey()]) || 0;
+    var enBtns="";
+    for(var e=1;e<=5;e++){
+      enBtns+='<button class="en-btn'+(en===e?" on":"")+'" data-en="'+e+'">'+e+'</button>';
+    }
+    html+='<div class="life-row"><span class="life-label">⚡ 精力</span><span class="mood-row">'+enBtns+'</span></div>';
+
+    document.getElementById("life").innerHTML=html;
+  }
+  function markPeriod(){
+    state.periodStart = dayKey();
+    save(); render();
+    toast("🌙 已记录经期开始，体力日课暂停 "+PERIOD_DAYS+" 天");
+  }
+  function toggleOut(){
+    var today=dayKey();
+    var arr=state.outDays||[];
+    var i=arr.indexOf(today);
+    if(i>=0){ arr.splice(i,1); toast("已撤销今日出门"); }
+    else{ arr.push(today); toast("🚶 出门走一走，精神会更好"); }
+    save(); render();
+  }
+  function setMood(i){
+    state.moods = state.moods||{};
+    state.moods[dayKey()]=i;
+    save(); render();
+    toast("今日心情："+MOODS[i].label);
+  }
+  function setEnergy(n){
+    state.energies = state.energies||{};
+    state.energies[dayKey()]=n;
+    save(); render();
+    toast("今日精力："+n+"/5");
+  }
+
+  // ---------- 反馈 ----------
+  function flashStat(key){
+    var el=document.querySelector('.stat-row[data-stat="'+key+'"] .stat-bar');
+    if(el){el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");}
+  }
+
+  // ---------- 音效（Web Audio，无需外部文件） ----------
+  var audioCtx=null;
+  function ensureAudio(){
+    if(!audioCtx){
+      var AC=window.AudioContext||window.webkitAudioContext;
+      if(AC) audioCtx=new AC();
+    }
+    if(audioCtx && audioCtx.state==="suspended") audioCtx.resume();
+  }
+  function tone(freq,delay,dur,type,vol){
+    if(!audioCtx) return;
+    var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||"sine"; o.frequency.value=freq;
+    var t=audioCtx.currentTime+(delay||0);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol||0.1,t+0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t+dur+0.05);
+  }
+  function sndDing(){ensureAudio();tone(880,0,0.22,"sine",0.10);tone(1320,0.06,0.32,"sine",0.07);}
+  function sndLevelUp(){ensureAudio();tone(523,0,0.28,"sine",0.11);tone(659,0.10,0.28,"sine",0.11);tone(784,0.20,0.4,"sine",0.11);}
+  function sndUnlock(){ensureAudio();tone(1046,0,0.18,"triangle",0.08);tone(1568,0.08,0.3,"triangle",0.06);}
+
+  // ---------- 逻辑 ----------
+  function applyTask(t,sign){
+    // sign: +1 完成, -1 撤销
+    state.stats[t.stat] = clamp(state.stats[t.stat] + sign*STAT_GAIN, 0, 999);
+    state.xp = clamp(state.xp + sign*XP_GAIN, 0, 99999);
+    state.hp = clamp(state.hp - sign*HP_COST, 0, 100);
+    state.hpMin = Math.min(state.hpMin, state.hp);
+    state.totalDone = clamp(state.totalDone + sign, 0, 999999);
+  }
+
+  function afterChange(feedback){
+    // 等级提升
+    var lv=levelOf(state);
+    if(lv>state.lastLevel){ state.lastLevel=lv; sndLevelUp(); toast("🎉 等级提升！Lv."+lv); }
+    // 图鉴解锁
+    var newly=[];
+    CARDS.forEach(function(c){
+      if(state.unlocked.indexOf(c.id)<0 && c.cond(state)) newly.push(c);
+    });
+    if(newly.length){
+      newly.forEach(function(c){state.unlocked.push(c.id);});
+      showReveal(newly);
+    }
+    if(feedback){ toast(feedback); }
+    save(); render();
+  }
+
+  function toggleTask(id){
+    var t=state.tasks.find(function(x){return x.id===id;}); if(!t)return;
+    if(!t.done){
+      t.done=true; applyTask(t,1);
+      if(t.repeat==="weekly") t.weekDone=weekKey();
+      (state.history=state.history||[]).push({d:dayKey(),n:t.name,s:t.stat});
+      sndDing();
+      afterChange("✨ 完成「"+t.name+"」：+5 "+statLabel(t.stat)+" · +10 经验 · -6 血");
+      flashStat(t.stat); flashStat("hp");
+    }else{
+      t.done=false; applyTask(t,-1);
+      var h=state.history||[];
+      for(var i=h.length-1;i>=0;i--){
+        if(h[i].n===t.name && h[i].d===dayKey()){ h.splice(i,1); break; }
+      }
+      afterChange("↩ 撤销「"+t.name+"」");
+    }
+  }
+
+  function addTask(){
+    var inp=document.getElementById("newTask");
+    var name=inp.value.trim();
+    if(!name){ toast("先写点什么"); return; }
+    var stat=document.getElementById("newStat").value;
+    var rep=document.getElementById("newRepeat").value;
+    state.tasks.push({id:uid(),name:name,stat:stat,done:false,repeat:(rep==="once"?false:rep)});
+    document.getElementById("newRepeat").value="once";
+    inp.value="";
+    save(); render();
+    toast("已加入今日日课");
+  }
+
+  function delTask(id){
+    state.tasks=state.tasks.filter(function(t){return t.id!==id;});
+    save(); render();
+  }
+
+  function toggleStep(qid,stepName){
+    var q=state.quests.find(function(x){return x.id===qid;}); if(!q)return;
+    var st=q.steps.find(function(s){return s.name===stepName;}); if(!st)return;
+    st.done=!st.done;
+    var done=q.steps.filter(function(s){return s.done;}).length;
+    var total=q.steps.length;
+    save(); render();
+    if(total && done===total){ toast("🏆 主线「"+q.name+"」全部步骤完成！"); }
+  }
+
+  function editDeadline(qid){
+    var q=state.quests.find(function(x){return x.id===qid;}); if(!q)return;
+    var v=prompt("修改「"+q.name+"」的截止日期（格式 YYYY-MM-DD）：", q.deadline||"");
+    if(v===null) return;
+    v=v.trim();
+    if(v && /^\d{4}-\d{2}-\d{2}$/.test(v)){ q.deadline=v; save(); render(); }
+    else if(v===""){ q.deadline=""; save(); render(); }
+    else{ toast("日期格式不对，应为 YYYY-MM-DD"); }
+  }
+
+  function rest(){
+    var today=dayKey();
+    if(state.restDate!==today){ state.restDate=today; state.restUsed=0; }
+    if(state.restUsed>=REST_LIMIT){ toast("今日小憩次数已用完"); return; }
+    state.restUsed++;
+    state.hp=clamp(state.hp+REST_HP,0,100);
+    state.stats.str=clamp(state.stats.str+REST_STR,0,999);
+    flashStat("hp"); flashStat("str");
+    afterChange("🛌 小憩：+30 血 · +3 体力");
+  }
+
+  function showReveal(cards){
+    sndUnlock();
+    var html='<h3>✦ 图鉴解锁 ✦</h3><div class="reveal">你解锁了新的收藏</div>';
+    cards.forEach(function(c){
+      html+='<div class="reveal-card '+RARITY_CLASS[c.rarity]+'">'
+        +'<div class="emoji">'+c.emoji+'</div>'
+        +'<div><div class="rname">'+c.name+'</div>'
+        +'<div class="rrarity">'+c.rarity+'</div>'
+        +'<div class="rtext">'+c.text+'</div></div></div>';
+    });
+    html+='<button class="primary" id="modalClose" style="margin-top:16px;">收下 ✦</button>';
+    document.getElementById("modalBox").innerHTML=html;
+    document.getElementById("modal").classList.add("show");
+    document.getElementById("modalClose").onclick=function(){
+      document.getElementById("modal").classList.remove("show");
+    };
+  }
+
+  // ---------- 存档 ----------
+  function exportData(){
+    var blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="grimoire-存档-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    toast("存档已导出");
+  }
+  function importData(file){
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var obj=JSON.parse(r.result);
+        if(!obj || typeof obj!=="object" || !obj.stats){ throw new Error("bad"); }
+        state=obj; save(); render(); toast("存档已导入");
+      }catch(e){ toast("导入失败：文件格式不对"); }
+    };
+    r.readAsText(file);
+  }
+
+  // ---------- 云端同步 ----------
+  function syncToken(){ return localStorage.getItem(SYNC_TOKEN_KEY)||""; }
+  function syncEnabled(){ return !!syncToken(); }
+  function syncAuthHeader(){
+    var t=syncToken();
+    return (t.indexOf("github_pat_")===0 ? "Bearer " : "token ") + t;
+  }
+  function apiUrl(){
+    return "https://api.github.com/repos/"+SYNC_OWNER+"/"+SYNC_REPO+"/contents/"+SYNC_FILE;
+  }
+  function getHeaders(){
+    return { "Authorization":syncAuthHeader(), "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28", "Content-Type":"application/json" };
+  }
+  function b64Encode(s){
+    var b=new TextEncoder().encode(s), bin="";
+    for(var i=0;i<b.length;i++) bin+=String.fromCharCode(b[i]);
+    return btoa(bin);
+  }
+  function b64Decode(s){
+    var bin=atob(s), b=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+    return new TextDecoder().decode(b);
+  }
+  function adoptRemote(remote){
+    var base=defaultProgress();
+    for(var k in remote){ base[k]=remote[k]; }
+    base.tasks=(remote.tasks&&remote.tasks.length!==undefined)?remote.tasks:defaultTasks();
+    base.tasks.forEach(function(t){ if(t.repeat===true) t.repeat="daily"; });
+    state=base;
+    persist(); render();
+  }
+
+  var pushTimer=null;
+  function schedulePush(){
+    if(!syncEnabled()) return;
+    clearTimeout(pushTimer);
+    pushTimer=setTimeout(pushToCloud,1200);
+  }
+  function pushToCloud(){
+    if(!syncEnabled()) return;
+    if(!state._ts){ state._ts=Date.now(); persist(); }
+    var content=b64Encode(JSON.stringify(state));
+    fetch(apiUrl(),{headers:getHeaders()})
+      .then(function(r){ return r.status===404 ? null : (r.ok ? r.json() : Promise.reject(new Error("get "+r.status))); })
+      .then(function(j){
+        var body={message:"sync "+dayKey(), content:content};
+        if(j&&j.sha) body.sha=j.sha;
+        return fetch(apiUrl(),{method:"PUT",headers:getHeaders(),body:JSON.stringify(body)});
+      })
+      .then(function(r){ if(r&&!r.ok) throw new Error("put "+r.status); setSyncStatus("已同步"); })
+      .catch(function(){ setSyncStatus("同步失败（稍后自动重试）"); });
+  }
+  function pullFromCloud(){
+    if(!syncEnabled()) return;
+    fetch(apiUrl(),{headers:getHeaders()})
+      .then(function(r){ return r.status===404 ? null : (r.ok ? r.json() : Promise.reject(new Error("pull "+r.status))); })
+      .then(function(j){
+        if(!j){ pushToCloud(); return; }
+        var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
+        if((remote._ts||0) > (state._ts||0)){
+          adoptRemote(remote);
+          setSyncStatus("已从云端更新");
+          toast("☁️ 已从云端同步最新数据");
+        }else{
+          pushToCloud();
+        }
+      })
+      .catch(function(){ setSyncStatus("同步失败（网络？）"); });
+  }
+  function connectSync(token){
+    token=(token||"").trim();
+    if(!token){ setSyncStatus("令牌不能为空"); return; }
+    localStorage.setItem(SYNC_TOKEN_KEY, token);
+    closeSyncModal();
+    setSyncStatus("连接中…");
+    var first = !localStorage.getItem("grimoire_sync_onboarded");
+    if(first){
+      // 这台设备第一次连接：云端优先（避免覆盖另一台设备已有的数据）
+      fetch(apiUrl(),{headers:getHeaders()})
+        .then(function(r){ return r.status===404 ? null : (r.ok ? r.json() : Promise.reject(new Error("c "+r.status))); })
+        .then(function(j){
+          if(j){
+            var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
+            adoptRemote(remote);
+            setSyncStatus("已从云端同步");
+            toast("☁️ 已从云端同步数据");
+          }else{
+            pushToCloud();
+          }
+          localStorage.setItem("grimoire_sync_onboarded","1");
+        })
+        .catch(function(){ setSyncStatus("连接失败（检查令牌/网络）"); });
+    }else{
+      pullFromCloud();
+    }
+    toast("☁️ 已开启云端同步");
+  }
+  function disconnectSync(){
+    localStorage.removeItem(SYNC_TOKEN_KEY);
+    setSyncStatus("未开启同步");
+    closeSyncModal();
+  }
+  function setSyncStatus(msg){
+    var el=document.getElementById("syncStatus");
+    if(el) el.textContent="☁️ "+msg;
+  }
+  function openSyncModal(){
+    document.getElementById("syncToken").value="";
+    document.getElementById("syncDisconnect").style.display = syncEnabled() ? "inline-block" : "none";
+    document.getElementById("syncModal").style.display="flex";
+    document.getElementById("syncToken").focus();
+  }
+  function closeSyncModal(){
+    document.getElementById("syncModal").style.display="none";
+  }
+
+  // ---------- 事件 ----------
+  document.addEventListener("click",function(e){
+    var t=e.target;
+    if(t.id==="addTask"){ addTask(); }
+    else if(t.id==="restBtn"){ rest(); }
+    else if(t.id==="exportBtn"){ exportData(); }
+    else if(t.id==="importBtn"){ document.getElementById("importFile").click(); }
+    else if(t.id==="resetBtn"){
+      if(confirm("确定要重置全部数据吗？此操作不可撤销。建议先导出备份。")){
+        localStorage.removeItem(PROGRESS_KEY);
+        localStorage.removeItem(TASKS_KEY);
+        for(var i=1;i<=6;i++){ localStorage.removeItem("grimoire_v"+i); }
+        load(); render(); toast("已重置");
+      }
+    }
+    else if(t.id==="backfillBtn"){ toggleBackfill(); }
+    else if(t.id==="bfSave"){ saveBackfill(); }
+    else if(t.id==="syncSetupBtn"){ openSyncModal(); }
+    else if(t.id==="syncSave"){ connectSync(document.getElementById("syncToken").value); }
+    else if(t.id==="syncCancel"){ closeSyncModal(); }
+    else if(t.id==="syncDisconnect"){ disconnectSync(); }
+    else if(t.id==="syncModal"){ closeSyncModal(); }
+    else if(t.id==="markPeriodBtn"){ markPeriod(); }
+    else if(t.id==="outBtn"){ toggleOut(); }
+    else if(t.hasAttribute("data-mood")){ setMood(parseInt(t.getAttribute("data-mood"),10)); }
+    else if(t.hasAttribute("data-en")){ setEnergy(parseInt(t.getAttribute("data-en"),10)); }
+    else if(t.hasAttribute("data-del")){ delTask(t.getAttribute("data-del")); }
+    else if(t.hasAttribute("data-deadline")){ editDeadline(t.getAttribute("data-deadline")); }
+  });
+
+  document.addEventListener("change",function(e){
+    var t=e.target;
+    if(t.type==="checkbox" && t.hasAttribute("data-id")){ toggleTask(t.getAttribute("data-id")); }
+    else if(t.type==="checkbox" && t.hasAttribute("data-quest")){
+      toggleStep(t.getAttribute("data-quest"), t.getAttribute("data-step"));
+    }
+  });
+
+  document.getElementById("newTask").addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ addTask(); }
+  });
+  document.getElementById("importFile").addEventListener("change",function(e){
+    if(e.target.files && e.target.files[0]){ importData(e.target.files[0]); }
+    e.target.value="";
+  });
+  document.getElementById("charName").addEventListener("click",function(){
+    var v=prompt("给你的学徒起个名字：", state.name||"");
+    if(v && v.trim()){ state.name=v.trim(); save(); render(); }
+  });
+
+  // ---------- 启动 ----------
+  load(); render(); checkDayRollover();
+  setSyncStatus(syncEnabled() ? "已连接" : "未开启同步");
+  if(syncEnabled()) pullFromCloud();
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  }
+  setInterval(function(){
+    // 每 60s：检查是否跨天 + 刷新倒计时（只在页面可见时）
+    if(!document.hidden){ checkDayRollover(); renderQuests(); }
+  },60000);
+  window.addEventListener("focus", function(){ checkDayRollover(); if(syncEnabled()) pullFromCloud(); });
+})();
+</script>
+</body>
+</html>
