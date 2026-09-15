@@ -468,8 +468,8 @@
       {id:uid(),name:"准备 Andrew Doxey 套瓷信",stat:"cha",done:false},
       {id:uid(),name:"整理 2 位导师的申请材料（CV 等）",stat:"int",done:false},
       {id:uid(),name:"设置周一（9/14）定时发送 2 封套瓷信",stat:"will",done:false},
-      {id:uid(),name:"读 1 篇统计遗传方法论文",stat:"int",done:false,repeat:"daily"},
-      {id:uid(),name:"锻炼 30 分钟",stat:"str",done:false,repeat:"daily"}
+      {id:uid(),name:"读 1 篇统计遗传方法论文",stat:"int",done:false,repeat:"daily",habit:true},
+      {id:uid(),name:"锻炼 30 分钟",stat:"str",done:false,repeat:"daily",habit:true}
     ];
   }
 
@@ -508,8 +508,10 @@
     if(p){ for(var k in p){ state[k]=p[k]; } }
     state.tasks = (t && t.length!==undefined) ? t : defaultTasks();
     state.tasks.forEach(function(tk){ if(tk.repeat===true) tk.repeat="daily"; });
+    normalizeHabits();
     seedHistory911();
     seedLife();
+    seedTasks914();
   }
   function persist(){
     var prog={};
@@ -562,6 +564,27 @@
     localStorage.setItem(FLAG,"1");
     persist();
   }
+  // 一次性：把「明后两天要干」的 7 件套磁/申请日课加进去（按名字去重，只加一次）
+  function seedTasks914(){
+    var FLAG="grimoire_seed_tasks914";
+    if(localStorage.getItem(FLAG)) return;
+    var seed=[
+      {name:"给导师发邮件询问研究生论文能否发表",stat:"cha"},
+      {name:"准备 Ness 申请材料",stat:"int"},
+      {name:"给 Ness 套瓷信定时发送",stat:"will"},
+      {name:"准备 Antarctic Ancient DNA 申请材料",stat:"int"},
+      {name:"给 Antarctic Ancient DNA 套瓷信定时发送",stat:"will"},
+      {name:"准备 Evolutionary Ecology of Arctic Phytoplankton (PhD) 申请材料",stat:"int"},
+      {name:"给 Evolutionary Ecology of Arctic Phytoplankton (PhD) 申请邮件定时发送",stat:"will"}
+    ];
+    var names={};
+    state.tasks.forEach(function(t){ names[t.name]=1; });
+    seed.forEach(function(s){
+      if(!names[s.name]) state.tasks.push({id:uid(),name:s.name,stat:s.stat,done:false,repeat:false});
+    });
+    localStorage.setItem(FLAG,"1");
+    save();
+  }
   function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
   function levelOf(s){return 1 + Math.floor(s.xp / XP_PER_LEVEL);}
   // 一天从凌晨 2 点开始（熬夜的话 1 点还算「今天」）
@@ -574,17 +597,30 @@
     var k=dayKey().split("-");
     return parseInt(k[1],10)+"月"+parseInt(k[2],10)+"日";
   }
+  // 只有真正的「每日习惯」（锻炼 / 读论文）才会每天自动刷新；其它任务一律一次性，不再自动 renew
+  function isHabitName(name){
+    if(!name) return false;
+    if(/锻炼/.test(name)) return true;
+    if(/读/.test(name) && /论文|文献/.test(name)) return true;
+    return false;
+  }
+  function normalizeHabits(){
+    state.tasks.forEach(function(t){
+      if(isHabitName(t.name)){ t.habit=true; if(!t.repeat) t.repeat="daily"; }
+      else if(t.repeat==="daily"){ t.repeat=false; delete t.habit; }
+    });
+  }
   function checkDayRollover(){
     var k=dayKey();
     if(!state.dayKey){ state.dayKey=k; return; } // 首次加载，只初始化
     if(state.dayKey===k) return;
     state.tasks.forEach(function(t){
-      if(t.repeat==="daily"){ t.done=false; }
+      if(t.habit===true){ t.done=false; }
       else if(t.repeat==="weekly" && t.done && t.weekDone!==weekKey()){ t.done=false; }
     });
     state.restDate=k; state.restUsed=0;
     state.dayKey=k;
-    save(); render();
+    persist(); render();
     toast("🌅 新的一天，每日日课已刷新");
   }
 
@@ -1110,7 +1146,44 @@
     base.tasks=(remote.tasks&&remote.tasks.length!==undefined)?remote.tasks:defaultTasks();
     base.tasks.forEach(function(t){ if(t.repeat===true) t.repeat="daily"; });
     state=base;
+    normalizeHabits();
     persist(); render();
+  }
+  // 把 other 里 base 没有的任务/足迹/列表合并进 base（两边数据都不丢）
+  function mergeInto(base, other){
+    var bt = (base.tasks && base.tasks.length!==undefined) ? base.tasks : [];
+    var ot = (other.tasks && other.tasks.length!==undefined) ? other.tasks : [];
+    var byId={};
+    bt.forEach(function(t){ if(t && t.id) byId[t.id]=t; });
+    ot.forEach(function(t){ if(t && t.id && !byId[t.id]) byId[t.id]=t; });
+    base.tasks = Object.keys(byId).map(function(k){ return byId[k]; });
+    base.tasks.forEach(function(t){ if(t.repeat===true) t.repeat="daily"; });
+
+    var bh = base.history || [], oh = other.history || [];
+    var seen={};
+    bh.forEach(function(h){ seen[h.d+"|"+h.n]=1; });
+    oh.forEach(function(h){ if(!seen[h.d+"|"+h.n]){ seen[h.d+"|"+h.n]=1; bh.push(h); } });
+    base.history = bh;
+
+    function unionArr(a,b){
+      var s={};
+      (a||[]).forEach(function(x){ s[x]=1; });
+      (b||[]).forEach(function(x){ s[x]=1; });
+      return Object.keys(s);
+    }
+    base.outDays = unionArr(base.outDays, other.outDays);
+    base.unlocked = unionArr(base.unlocked, other.unlocked);
+
+    function mergeObj(a,b){
+      var out={};
+      for(var k in (b||{})) out[k]=b[k];
+      for(var k in (a||{})) out[k]=a[k];
+      return out;
+    }
+    base.moods = mergeObj(base.moods, other.moods);
+    base.energies = mergeObj(base.energies, other.energies);
+
+    return base;
   }
 
   var pushTimer=null;
@@ -1128,12 +1201,21 @@
   function pushToCloud(){
     if(!syncEnabled()) return;
     if(!state._ts){ state._ts=Date.now(); persist(); }
-    var content=b64Encode(JSON.stringify(state));
     fetch(apiUrl(),{headers:getHeaders()})
       .then(function(r){ return r.status===404 ? null : (r.ok ? r.json() : Promise.reject(new Error("get "+r.status))); })
       .then(function(j){
+        var sha=null;
+        if(j){
+          sha=j.sha;
+          try{
+            var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
+            state=mergeInto(state, remote);   // 合并云端独有任务/足迹，避免覆盖丢失
+            persist();
+          }catch(e){}
+        }
+        var content=b64Encode(JSON.stringify(state));
         var body={message:"sync "+dayKey(), content:content};
-        if(j&&j.sha) body.sha=j.sha;
+        if(sha) body.sha=sha;
         return fetch(apiUrl(),{method:"PUT",headers:getHeaders(),body:JSON.stringify(body)});
       })
       .then(function(r){ if(r&&!r.ok) throw new Error("put "+r.status); lastSyncAt=Date.now(); setSyncStatus("已同步 "+fmtTime(lastSyncAt)); })
@@ -1148,7 +1230,7 @@
         var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
         var rt=remote._ts||0, lt=state._ts||0;
         if(rt > lt){
-          adoptRemote(remote);
+          adoptRemote(mergeInto(remote, state));   // 以云端为底，合并本地独有任务/足迹
           lastSyncAt=Date.now();
           setSyncStatus("已从云端更新 "+fmtTime(lastSyncAt));
           toast("☁️ 已同步最新数据");
