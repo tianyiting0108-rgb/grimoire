@@ -579,11 +579,13 @@
     ];
     var names={};
     state.tasks.forEach(function(t){ names[t.name]=1; });
+    var added=false;
     seed.forEach(function(s){
-      if(!names[s.name]) state.tasks.push({id:uid(),name:s.name,stat:s.stat,done:false,repeat:false});
+      if(!names[s.name]){ state.tasks.push({id:uid(),name:s.name,stat:s.stat,done:false,repeat:false}); names[s.name]=1; added=true; }
     });
     localStorage.setItem(FLAG,"1");
-    save();
+    persist();
+    if(added) pushSeed();
   }
   function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
   function levelOf(s){return 1 + Math.floor(s.xp / XP_PER_LEVEL);}
@@ -1153,9 +1155,11 @@
   function mergeInto(base, other){
     var bt = (base.tasks && base.tasks.length!==undefined) ? base.tasks : [];
     var ot = (other.tasks && other.tasks.length!==undefined) ? other.tasks : [];
-    var byId={};
-    bt.forEach(function(t){ if(t && t.id) byId[t.id]=t; });
-    ot.forEach(function(t){ if(t && t.id && !byId[t.id]) byId[t.id]=t; });
+    var byId={}, byName={};
+    bt.forEach(function(t){ if(t && t.id) byId[t.id]=t; if(t && t.name) byName[t.name]=t; });
+    ot.forEach(function(t){
+      if(t && t.id && !byId[t.id] && !byName[t.name]){ byId[t.id]=t; byName[t.name]=t; }
+    });
     base.tasks = Object.keys(byId).map(function(k){ return byId[k]; });
     base.tasks.forEach(function(t){ if(t.repeat===true) t.repeat="daily"; });
 
@@ -1184,6 +1188,27 @@
     base.energies = mergeObj(base.energies, other.energies);
 
     return base;
+  }
+  // 只把本地「多出来的任务」并进云端；云端已有成长数值/足迹一律保留，绝不用旧设备数据覆盖
+  function pushSeed(){
+    if(!syncEnabled()) return;
+    fetch(apiUrl(),{headers:getHeaders()})
+      .then(function(r){ return r.status===404 ? null : (r.ok ? r.json() : Promise.reject(new Error("g "+r.status))); })
+      .then(function(j){
+        var base=null, sha=null;
+        if(j){
+          sha=j.sha;
+          try{ base=JSON.parse(b64Decode(j.content.replace(/\s+/g,""))); }catch(e){}
+        }
+        if(!base) base=defaultProgress();
+        var merged=mergeInto(base, state);   // 云端为底，本地独有任务并入，云端数值保留
+        var content=b64Encode(JSON.stringify(merged));
+        var body={message:"seed tasks", content:content};
+        if(sha) body.sha=sha;
+        return fetch(apiUrl(),{method:"PUT",headers:getHeaders(),body:JSON.stringify(body)});
+      })
+      .then(function(r){ if(r&&!r.ok) throw new Error("p "+r.status); lastSyncAt=Date.now(); setSyncStatus("已同步 "+fmtTime(lastSyncAt)); })
+      .catch(function(){});
   }
 
   var pushTimer=null;
