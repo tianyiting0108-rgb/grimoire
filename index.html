@@ -620,6 +620,13 @@
       if(t.habit===true){ t.done=false; }
       else if(t.repeat==="weekly" && t.done && t.weekDone!==weekKey()){ t.done=false; }
     });
+    // 完成的一次性日课，第二天自动从列表清掉（足迹/分数已存在 history，不受影响）
+    state.tasks = state.tasks.filter(function(t){
+      if(t.done !== true) return true;          // 未完成留着
+      if(t.habit === true) return true;          // 每日习惯留着（上面已重置）
+      if(t.repeat === "weekly") return true;     // 每周任务留着
+      return false;                               // 完成的一次性任务删掉
+    });
     state.restDate=k; state.restUsed=0;
     state.dayKey=k;
     persist(); render();
@@ -1189,6 +1196,15 @@
 
     return base;
   }
+  // 只合并「足迹」（打卡记录），永不删除任何一条；任务列表不合并（支持删除）
+  function mergeHistory(base, other){
+    var bh = (base && base.history) || [];
+    var oh = (other && other.history) || [];
+    var seen={};
+    bh.forEach(function(h){ seen[h.d+"|"+h.n]=1; });
+    oh.forEach(function(h){ if(!seen[h.d+"|"+h.n]){ seen[h.d+"|"+h.n]=1; bh.push(h); } });
+    return bh;
+  }
   // 只把本地「多出来的任务」并进云端；云端已有成长数值/足迹一律保留，绝不用旧设备数据覆盖
   function pushSeed(){
     if(!syncEnabled()) return;
@@ -1234,7 +1250,7 @@
           sha=j.sha;
           try{
             var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-            state=mergeInto(state, remote);   // 合并云端独有任务/足迹，避免覆盖丢失
+            state.history = mergeHistory(state.history, remote.history);   // 只合并云端足迹，任务以本地为准（支持删除）
             persist();
           }catch(e){}
         }
@@ -1255,7 +1271,8 @@
         var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
         var rt=remote._ts||0, lt=state._ts||0;
         if(rt > lt){
-          adoptRemote(mergeInto(remote, state));   // 以云端为底，合并本地独有任务/足迹
+          remote.history = mergeHistory(remote.history, state.history);   // 保留本地足迹，任务以云端为准
+          adoptRemote(remote);
           lastSyncAt=Date.now();
           setSyncStatus("已从云端更新 "+fmtTime(lastSyncAt));
           toast("☁️ 已同步最新数据");
