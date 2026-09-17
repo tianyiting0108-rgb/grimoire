@@ -319,6 +319,11 @@
             <option value="daily">每日</option>
             <option value="weekly">每周</option>
           </select>
+          <select id="newWeight" title="这件要花多少功夫：普通 +5，重的加更多">
+            <option value="1">+5</option>
+            <option value="2">+10</option>
+            <option value="3">+15</option>
+          </select>
           <button id="addTask">＋</button>
         </div>
       </section>
@@ -730,10 +735,11 @@
     }
     var html="";
     visible.forEach(function(t){
+      var w=taskWeight(t);
       html+='<div class="task'+(t.done?" done":"")+'">'
         +'<input type="checkbox" data-id="'+t.id+'" '+(t.done?"checked":"")+'>'
         +'<span class="name">'+esc(t.name)+(t.repeat==="daily"?' <span class="repeat-badge" title="每日重复">↻每日</span>':(t.repeat==="weekly"?' <span class="repeat-badge" title="每周重复">↻每周</span>':''))+'</span>'
-        +'<span class="task-stat">+'+STAT_GAIN+' '+statLabel(t.stat)+' · +'+XP_GAIN+' 经验</span>'
+        +'<span class="task-stat">+'+STAT_GAIN*w+' '+statLabel(t.stat)+' · +'+XP_GAIN*w+' 经验</span>'
         +'<button class="ghost del" data-del="'+t.id+'" title="删除">✕</button>'
         +'</div>';
     });
@@ -1023,10 +1029,12 @@
   function sndUnlock(){ensureAudio();tone(1046,0,0.18,"triangle",0.08);tone(1568,0.08,0.3,"triangle",0.06);}
 
   // ---------- 逻辑 ----------
+  function taskWeight(t){ return (t.w && t.w>0) ? t.w : 1; }
   function applyTask(t,sign){
-    // sign: +1 完成, -1 撤销
-    state.stats[t.stat] = clamp(state.stats[t.stat] + sign*STAT_GAIN, 0, 999);
-    state.xp = clamp(state.xp + sign*XP_GAIN, 0, 99999);
+    // sign: +1 完成, -1 撤销；奖励按「份量」w 放大（普通 1，重活加更多）
+    var w=taskWeight(t);
+    state.stats[t.stat] = clamp(state.stats[t.stat] + sign*STAT_GAIN*w, 0, 999);
+    state.xp = clamp(state.xp + sign*XP_GAIN*w, 0, 99999);
     state.hp = clamp(state.hp - sign*HP_COST, 0, 100);
     state.hpMin = Math.min(state.hpMin, state.hp);
     state.totalDone = clamp(state.totalDone + sign, 0, 999999);
@@ -1056,7 +1064,8 @@
       if(t.repeat==="weekly") t.weekDone=weekKey();
       (state.history=state.history||[]).push({d:dayKey(),n:t.name,s:t.stat});
       sndDing();
-      afterChange("✨ 完成「"+t.name+"」：+5 "+statLabel(t.stat)+" · +10 经验 · -6 血");
+      var w=taskWeight(t);
+      afterChange("✨ 完成「"+t.name+"」：+"+STAT_GAIN*w+" "+statLabel(t.stat)+" · +"+XP_GAIN*w+" 经验 · -"+HP_COST+" 血");
       flashStat(t.stat); flashStat("hp");
     }else{
       t.done=false; applyTask(t,-1);
@@ -1074,8 +1083,10 @@
     if(!name){ toast("先写点什么"); return; }
     var stat=document.getElementById("newStat").value;
     var rep=document.getElementById("newRepeat").value;
-    state.tasks.push({id:uid(),name:name,stat:stat,done:false,repeat:(rep==="once"?false:rep)});
+    var w=parseInt(document.getElementById("newWeight").value,10)||1;
+    state.tasks.push({id:uid(),name:name,stat:stat,done:false,repeat:(rep==="once"?false:rep),w:w});
     document.getElementById("newRepeat").value="once";
+    document.getElementById("newWeight").value="1";
     inp.value="";
     save(); render();
     toast("已加入今日日课");
