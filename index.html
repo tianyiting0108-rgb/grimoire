@@ -512,6 +512,7 @@
     seedHistory911();
     seedLife();
     seedTasks914();
+    seedHistoryRecover();
   }
   function persist(){
     var prog={};
@@ -586,6 +587,34 @@
     localStorage.setItem(FLAG,"1");
     persist();
     if(added) pushSeed();
+  }
+  // 永远补回已知的 11 条打卡足迹（按日期+任务名去重，幂等），防止旧设备同步把它们冲掉
+  function seedHistoryRecover(){
+    var want=[
+      {d:"2026-09-11",n:"准备 Claude Bhérer 套瓷信",s:"cha"},
+      {d:"2026-09-11",n:"准备 Andrew Doxey 套瓷信",s:"cha"},
+      {d:"2026-09-11",n:"整理 2 位导师的申请材料（CV 等）",s:"int"},
+      {d:"2026-09-11",n:"设置周一（9/14）定时发送 2 封套瓷信",s:"will"},
+      {d:"2026-09-12",n:"更新我的学习软件",s:"int"},
+      {d:"2026-09-12",n:"查询EMBL需要的申请材料",s:"cha"},
+      {d:"2026-09-15",n:"准备 Ness 申请材料",s:"int"},
+      {d:"2026-09-15",n:"看一篇论文",s:"int"},
+      {d:"2026-09-16",n:"准备 Antarctic Ancient DNA 申请材料",s:"int"},
+      {d:"2026-09-16",n:"给 Antarctic Ancient DNA 套瓷信定时发送",s:"will"},
+      {d:"2026-09-16",n:"给导师发邮件询问研究生论文能否发表",s:"cha"}
+    ];
+    var h=state.history||[];
+    var have={};
+    h.forEach(function(x){ have[x.d+"|"+x.n]=1; });
+    var added=false;
+    want.forEach(function(w){
+      if(!have[w.d+"|"+w.n]){ h.push(w); have[w.d+"|"+w.n]=1; added=true; }
+    });
+    if(added){
+      h.sort(function(a,b){ return a.d<b.d?-1:(a.d>b.d?1:0); });
+      state.history=h;
+      persist();
+    }
   }
   function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
   function levelOf(s){return 1 + Math.floor(s.xp / XP_PER_LEVEL);}
