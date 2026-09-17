@@ -1377,9 +1377,7 @@
     }
   });
 
-  document.getElementById("newTask").addEventListener("keydown",function(e){
-    if(e.key==="Enter"){ addTask(); }
-  });
+  // 回车不再直接添加日课（避免中文输入法选字时误触回车，把没写完的日课加进去）；只点「＋」按钮添加
   document.getElementById("importFile").addEventListener("change",function(e){
     if(e.target.files && e.target.files[0]){ importData(e.target.files[0]); }
     e.target.value="";
