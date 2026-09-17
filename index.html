@@ -603,7 +603,8 @@
   function isHabitName(name){
     if(!name) return false;
     if(/锻炼/.test(name)) return true;
-    if(/读/.test(name) && /论文|文献/.test(name)) return true;
+    if(/篇/.test(name) && /论文|文献/.test(name)) return true;   // 读/看 X 篇论文/文献
+    if(/读论文|看论文|读文献|看文献/.test(name)) return true;    // 直接写「读论文」「看论文」这类
     return false;
   }
   function normalizeHabits(){
