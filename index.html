@@ -226,6 +226,10 @@
     margin-top:18px;display:flex;gap:10px;align-items:center;justify-content:center;
     font-size:11px;color:var(--ink-soft);flex-wrap:wrap;
   }
+  .ver{
+    padding:2px 7px;border:1px solid var(--line);border-radius:10px;
+    color:var(--ink-soft);font-size:10px;letter-spacing:.5px;
+  }
 
   /* ---------- toast & modal ---------- */
   #toast{
@@ -374,6 +378,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
+    <span class="ver" title="版本号：看到 v3 就是最新版">v3</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
