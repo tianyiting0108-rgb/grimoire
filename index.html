@@ -196,29 +196,54 @@
   .quest-progress i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));transition:width .4s ease;}
 
   /* ---------- grimoire cards ---------- */
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:13px;}
   .card{
-    border-radius:10px;padding:12px 10px;text-align:center;min-height:140px;
-    background:#fffaf0;border:1px solid var(--line);position:relative;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-    transition:transform .15s ease, box-shadow .15s ease;
+    border-radius:14px;padding:11px 10px 11px;text-align:center;min-height:158px;
+    background:#fffaf0;border:1px solid var(--line);position:relative;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    transition:transform .16s ease, box-shadow .16s ease;
   }
-  .card:hover{transform:translateY(-3px);}
-  .card .emoji{font-size:34px;line-height:1;}
-  .card .cname{font-size:13px;font-weight:bold;letter-spacing:1px;}
-  .card .rarity{font-size:10px;letter-spacing:2px;}
-  .card .ctext{font-size:10px;color:var(--ink-soft);line-height:1.4;margin-top:2px;}
-  .card.locked{filter:grayscale(.8);opacity:.62;border-style:dashed;}
-  .card.locked .emoji{filter:grayscale(1);}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--line);}
+  .card:hover{transform:translateY(-3px);box-shadow:0 10px 22px var(--shadow);}
+  .card .medal{
+    width:54px;height:54px;border-radius:50%;margin-top:7px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:27px;line-height:1;flex:0 0 auto;
+    background:radial-gradient(circle at 34% 30%, #fffdf6, #efe3c6);
+    border:2px solid var(--line);
+    box-shadow:inset 0 -2px 4px rgba(0,0,0,.06), 0 3px 9px rgba(0,0,0,.09);
+  }
+  .card .cname{font-size:13px;font-weight:bold;letter-spacing:1px;margin-top:1px;}
+  .card .rarity{
+    font-size:9px;letter-spacing:3px;padding:1px 8px;border-radius:9px;
+    border:1px solid currentColor;line-height:1.5;
+  }
+  .card .ctext{font-size:10px;color:var(--ink-soft);line-height:1.4;max-width:92%;}
+  .card .prog{font-size:9px;color:var(--ink-soft);opacity:.85;letter-spacing:.4px;}
+
+  .card.locked{filter:grayscale(.85);opacity:.72;border-style:dashed;}
+  .card.locked .medal{background:radial-gradient(circle at 34% 30%, #f3efe3, #e4dbc4);}
   .card.locked .cname{color:#a89b7c;}
-  .rarity-common{border-color:var(--common);}
+
+  .rarity-common::before{background:var(--common);}
+  .rarity-rare::before{background:var(--rare);}
+  .rarity-epic::before{background:var(--epic);}
+  .rarity-legend::before{background:linear-gradient(90deg,var(--gold-light),var(--legend),var(--gold-light));}
+
+  .rarity-common .medal{border-color:var(--common);}
   .rarity-common .rarity{color:var(--common);}
-  .rarity-rare{border-color:var(--rare);box-shadow:0 0 0 1px var(--rare) inset;}
+  .rarity-rare .medal{border-color:var(--rare);}
   .rarity-rare .rarity{color:var(--rare);}
-  .rarity-epic{border-color:var(--epic);box-shadow:0 0 0 1px var(--epic) inset;}
+  .rarity-epic .medal{border-color:var(--epic);}
   .rarity-epic .rarity{color:var(--epic);}
-  .rarity-legend{border-color:var(--legend);box-shadow:0 0 0 1px var(--legend) inset, 0 0 14px rgba(184,134,11,.35);}
+  .rarity-legend .medal{border-color:var(--legend);box-shadow:inset 0 -2px 4px rgba(0,0,0,.06), 0 0 14px rgba(184,134,11,.45);}
   .rarity-legend .rarity{color:var(--legend);}
+
+  /* 已解锁：染上稀有度底色 + 微光；传说额外镀金 */
+  .rarity-common:not(.locked){background:linear-gradient(165deg,#fbf7ec,#f2edda);}
+  .rarity-rare:not(.locked){background:linear-gradient(165deg,#f5faf6,#e6f0e9);}
+  .rarity-epic:not(.locked){background:linear-gradient(165deg,#f8f4fb,#ede4f3);}
+  .rarity-legend:not(.locked){background:linear-gradient(165deg,#fdf6e0,#f7e7b8);box-shadow:0 0 0 1px var(--legend) inset, 0 4px 16px rgba(184,134,11,.18);}
   .collect-count{font-size:11px;color:var(--ink-soft);margin-bottom:10px;letter-spacing:.5px;}
 
   /* ---------- footer / data ---------- */
@@ -430,16 +455,16 @@
   };
 
   var CARDS = [
-    {id:"c1",name:"初入魔道",emoji:"🕯️",rarity:"普通",text:"点亮第一根蜡烛。",cond:function(s){return s.totalDone>=1;}},
-    {id:"c2",name:"勤学苦练",emoji:"📖",rarity:"普通",text:"累计完成五次日课。",cond:function(s){return s.totalDone>=5;}},
-    {id:"c3",name:"智慧之泉",emoji:"🧠",rarity:"稀有",text:"智力达到 40。",cond:function(s){return s.stats.int>=40;}},
-    {id:"c4",name:"钢铁之躯",emoji:"💪",rarity:"稀有",text:"体力达到 40。",cond:function(s){return s.stats.str>=40;}},
-    {id:"c5",name:"银舌",emoji:"🗣️",rarity:"稀有",text:"魅力达到 40。",cond:function(s){return s.stats.cha>=40;}},
-    {id:"c6",name:"不屈之魂",emoji:"🧭",rarity:"稀有",text:"意志达到 40。",cond:function(s){return s.stats.will>=40;}},
-    {id:"c7",name:"血之彼岸",emoji:"🌘",rarity:"史诗",text:"血条一度跌到 40 以下。",cond:function(s){return s.hpMin<40;}},
-    {id:"c8",name:"破晓者",emoji:"⚔️",rarity:"史诗",text:"任一项属性达到 60。",cond:function(s){return Math.max(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)>=60;}},
-    {id:"c9",name:"四象归一",emoji:"✨",rarity:"史诗",text:"四项属性均达到 30。",cond:function(s){return ["int","str","cha","will"].every(function(k){return s.stats[k]>=30;});}},
-    {id:"c10",name:"研习大师",emoji:"🔮",rarity:"传说",text:"达到 5 级。",cond:function(s){return levelOf(s)>=5;}}
+    {id:"c1",name:"初入魔道",emoji:"🕯️",rarity:"普通",text:"点亮第一根蜡烛。",cond:function(s){return s.totalDone>=1;},prog:function(s){return "累计 "+s.totalDone+" / 1 次";}},
+    {id:"c2",name:"勤学苦练",emoji:"📖",rarity:"普通",text:"累计完成五次日课。",cond:function(s){return s.totalDone>=5;},prog:function(s){return "累计 "+s.totalDone+" / 5 次";}},
+    {id:"c3",name:"智慧之泉",emoji:"🧠",rarity:"稀有",text:"智力达到 40。",cond:function(s){return s.stats.int>=40;},prog:function(s){return "智力 "+s.stats.int+" / 40";}},
+    {id:"c4",name:"钢铁之躯",emoji:"💪",rarity:"稀有",text:"体力达到 40。",cond:function(s){return s.stats.str>=40;},prog:function(s){return "体力 "+s.stats.str+" / 40";}},
+    {id:"c5",name:"银舌",emoji:"🗣️",rarity:"稀有",text:"魅力达到 40。",cond:function(s){return s.stats.cha>=40;},prog:function(s){return "魅力 "+s.stats.cha+" / 40";}},
+    {id:"c6",name:"不屈之魂",emoji:"🧭",rarity:"稀有",text:"意志达到 40。",cond:function(s){return s.stats.will>=40;},prog:function(s){return "意志 "+s.stats.will+" / 40";}},
+    {id:"c7",name:"血之彼岸",emoji:"🌘",rarity:"史诗",text:"血条一度跌到 40 以下。",cond:function(s){return s.hpMin<40;},prog:function(s){return "当前最低 "+s.hpMin+" / 40";}},
+    {id:"c8",name:"破晓者",emoji:"⚔️",rarity:"史诗",text:"任一项属性达到 60。",cond:function(s){return Math.max(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)>=60;},prog:function(s){return "最高属性 "+Math.max(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)+" / 60";}},
+    {id:"c9",name:"四象归一",emoji:"✨",rarity:"史诗",text:"四项属性均达到 30。",cond:function(s){return ["int","str","cha","will"].every(function(k){return s.stats[k]>=30;});},prog:function(s){return "最低属性 "+Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)+" / 30";}},
+    {id:"c10",name:"研习大师",emoji:"🔮",rarity:"传说",text:"达到 5 级。",cond:function(s){return levelOf(s)>=5;},prog:function(s){return "当前等级 "+levelOf(s)+" / 5";}}
   ];
 
   var RARITY_CLASS = {"普通":"rarity-common","稀有":"rarity-rare","史诗":"rarity-epic","传说":"rarity-legend"};
@@ -807,11 +832,13 @@
     CARDS.forEach(function(c){
       var isUnlocked = unlocked.indexOf(c.id)>=0;
       var rc=RARITY_CLASS[c.rarity]||"rarity-common";
+      var prog = isUnlocked ? "" : ('<div class="prog">'+(c.prog?esc(c.prog(state)):"")+'</div>');
       html+='<div class="card '+rc+(isUnlocked?"":" locked")+'">'
-        +'<div class="emoji">'+(isUnlocked?c.emoji:"❓")+'</div>'
+        +'<div class="medal">'+(isUnlocked?c.emoji:"❓")+'</div>'
         +'<div class="cname">'+(isUnlocked?c.name:"？？？")+'</div>'
         +'<div class="rarity">'+c.rarity+'</div>'
-        +'<div class="ctext">'+(isUnlocked?c.text:"解锁条件："+c.text)+'</div>'
+        +'<div class="ctext">'+(isUnlocked?c.text:"🔒 "+c.text)+'</div>'
+        +prog
         +'</div>';
     });
     document.getElementById("cards").innerHTML=html;
