@@ -240,6 +240,12 @@
   .rarity-legend .rarity{color:var(--legend);}
   .card .medal svg{width:38px;height:38px;display:block;overflow:visible;}
   .card .medal .qmark{font-size:26px;line-height:1;}
+  /* 彩色插画卡片（试做） */
+  .card.illus{padding:8px 8px 11px;gap:4px;justify-content:flex-start;}
+  .card.illus .art{width:100%;height:104px;border-radius:9px;overflow:hidden;background:#e8dcc0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .card.illus .art svg{width:100%;height:100%;display:block;}
+  .card.illus .art .qmark{font-size:34px;color:#a89b7c;}
+  .card.illus.locked .art{filter:grayscale(1);opacity:.75;}
 
   /* 已解锁：染上稀有度底色 + 微光；传说额外镀金 */
   .rarity-common:not(.locked){background:linear-gradient(165deg,#fbf7ec,#f2edda);}
@@ -498,6 +504,11 @@
   };
 
 
+  // 试做：彩色插画样例（手绘 SVG 版，非最终）—— c1 魔女点蜡烛 / c10 温馨魔药室
+  var ILLUST = {
+    c1: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="wbg" cx="50%" cy="36%" r="72%"><stop offset="0%" stop-color="#3a2b58"/><stop offset="100%" stop-color="#1b1433"/></radialGradient><radialGradient id="wglow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#f4d98c" stop-opacity=".55"/><stop offset="100%" stop-color="#f4d98c" stop-opacity="0"/></radialGradient><radialGradient id="wflame" cx="50%" cy="68%" r="60%"><stop offset="0%" stop-color="#fff3c4"/><stop offset="45%" stop-color="#ffd24a"/><stop offset="100%" stop-color="#ff9d2e" stop-opacity="0"/></radialGradient></defs><circle cx="50" cy="50" r="47" fill="url(#wbg)"/><circle cx="50" cy="50" r="47" fill="none" stroke="#d4af37" stroke-opacity=".35" stroke-width="1"/><g fill="#f4ead2"><path d="M20 22l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1z" opacity=".85"/><path d="M80 18l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" opacity=".7"/><path d="M79 46l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z" opacity=".5"/><path d="M25 60l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z" opacity=".5"/></g><circle cx="50" cy="46" r="27" fill="url(#wglow)"/><ellipse cx="50" cy="91" rx="20" ry="4" fill="#0e0a1e" opacity=".5"/><path d="M50 54 C38 60 33 74 33 92 L67 92 C67 74 62 60 50 54 Z" fill="#3f6f5f"/><path d="M50 54 C41 60 37 72 37 86 L63 86 C63 72 59 60 50 54 Z" fill="#4f8b76"/><path d="M42 55 L50 62 L58 55 Z" fill="#f4ead2"/><circle cx="50" cy="44" r="10.5" fill="#f6d3ae"/><path d="M40 44 C39 40 41 36 45 35 L45 40 C42 41 40 42 40 44 Z" fill="#4a3560"/><path d="M60 44 C61 40 59 36 55 35 L55 40 C58 41 60 42 60 44 Z" fill="#4a3560"/><circle cx="46" cy="45" r="1.4" fill="#3a2a4a"/><circle cx="54" cy="45" r="1.4" fill="#3a2a4a"/><circle cx="43.5" cy="48" r="2" fill="#e8938a" opacity=".7"/><circle cx="56.5" cy="48" r="2" fill="#e8938a" opacity=".7"/><path d="M47 49 Q50 52 53 49" fill="none" stroke="#8a4a3a" stroke-width="1.2" stroke-linecap="round"/><path d="M50 20 L61 37 L39 37 Z" fill="#3b2b56"/><path d="M50 22 L58 36 L42 36 Z" fill="#4a3560"/><ellipse cx="50" cy="37" rx="15" ry="4" fill="#2f2346"/><path d="M43 36.5 L57 36.5" stroke="#d4af37" stroke-width="2.2" stroke-linecap="round"/><rect x="48" y="58" width="4" height="13" rx="1.2" fill="#f4ead2"/><rect x="48.6" y="58" width="1.4" height="13" rx=".7" fill="#d9b47e"/><circle cx="50" cy="53" r="7" fill="url(#wflame)"/><path d="M50 47 C52 50 52 52 50 54 C48 52 48 50 50 47 Z" fill="#ffd24a"/></svg>',
+    c10: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6b4630"/><stop offset="100%" stop-color="#362318"/></linearGradient><radialGradient id="pwarm" cx="50%" cy="72%" r="55%"><stop offset="0%" stop-color="#ffb95c" stop-opacity=".5"/><stop offset="100%" stop-color="#ffb95c" stop-opacity="0"/></radialGradient></defs><rect x="3" y="3" width="94" height="94" rx="12" fill="url(#pbg)"/><circle cx="50" cy="70" r="32" fill="url(#pwarm)"/><rect x="10" y="26" width="80" height="4" rx="2" fill="#4a2f1e"/><rect x="10" y="30" width="80" height="1.5" rx=".75" fill="#3a2416"/><g><rect x="18.3" y="7" width="3.4" height="3.5" rx="1" fill="#d6b98c"/><rect x="18.8" y="10.5" width="2.4" height="5" fill="#e8dcc0"/><circle cx="20" cy="22" r="6" fill="#e3d9f2" stroke="#c4b0e0" stroke-width=".6"/><path d="M14 24 a6 6 0 0 0 12 0 z" fill="#7d5ba6"/><rect x="17.6" y="17" width="1.5" height="5" rx=".75" fill="#fff" opacity=".55"/></g><g><rect x="30.3" y="7" width="3.4" height="3.5" rx="1" fill="#d6b98c"/><rect x="30.8" y="10.5" width="2.4" height="5" fill="#e8dcc0"/><circle cx="32" cy="22" r="6" fill="#d8eee2" stroke="#a8cdb8" stroke-width=".6"/><path d="M26 24 a6 6 0 0 0 12 0 z" fill="#2f9e6b"/><rect x="29.6" y="17" width="1.5" height="5" rx=".75" fill="#fff" opacity=".55"/></g><g><rect x="42.3" y="7" width="3.4" height="3.5" rx="1" fill="#d6b98c"/><rect x="42.8" y="10.5" width="2.4" height="5" fill="#e8dcc0"/><circle cx="44" cy="22" r="6" fill="#f6dcd8" stroke="#e0a89e" stroke-width=".6"/><path d="M38 24 a6 6 0 0 0 12 0 z" fill="#c0392b"/><rect x="41.6" y="17" width="1.5" height="5" rx=".75" fill="#fff" opacity=".55"/></g><g><rect x="54.3" y="9" width="3" height="3" rx="1" fill="#d6b98c"/><rect x="54.7" y="12" width="2.2" height="4.5" fill="#e8dcc0"/><circle cx="55.8" cy="22" r="5" fill="#fbe8c8" stroke="#e3c393" stroke-width=".6"/><path d="M51.3 23.5 a5 5 0 0 0 9 0 z" fill="#e0a13a"/><rect x="54" y="17.5" width="1.2" height="4" rx=".6" fill="#fff" opacity=".55"/></g><g><rect x="64.3" y="8" width="3.2" height="3.4" rx="1" fill="#d6b98c"/><rect x="64.7" y="11.4" width="2.4" height="5" fill="#e8dcc0"/><circle cx="65.9" cy="22.5" r="5.6" fill="#d7eef2" stroke="#a5cbd4" stroke-width=".6"/><path d="M61.2 24.4 a5.6 5.6 0 0 0 9.4 0 z" fill="#3f86a8"/><rect x="63.9" y="17.5" width="1.4" height="4.6" rx=".7" fill="#fff" opacity=".55"/></g><g><path d="M74 26 h14 v3 h-14 z" fill="#4a2f1e"/><path d="M80 29 v6" stroke="#8a6a3a" stroke-width="1.6"/><circle cx="80" cy="37" r="4.5" fill="#9db36a" opacity=".9"/></g><g><ellipse cx="50" cy="92" rx="19" ry="3" fill="#160f0a" opacity=".55"/><path d="M34 66 h32 l-4 22 h-24 z" fill="#2a2a33"/><path d="M36 66 l3 20 h22 l3-20 z" fill="#1f1f28"/><ellipse cx="50" cy="66" rx="17" ry="4.6" fill="#34343f"/><ellipse cx="50" cy="66" rx="14" ry="3.4" fill="#5cbf6a"/><circle cx="45" cy="64" r="1.3" fill="#8fe39a"/><circle cx="52" cy="65" r="1" fill="#8fe39a"/><circle cx="57" cy="64" r=".8" fill="#8fe39a"/></g><g fill="none" stroke="#e8dcc0" stroke-opacity=".4" stroke-width="1.4" stroke-linecap="round"><path d="M46 58 C44 54 48 53 46 49"/><path d="M54 59 C56 55 52 54 54 50"/></g></svg>'
+  };
   // ---------- 状态 ----------
   function uid(){return Date.now().toString(36) + Math.random().toString(36).slice(2,7);}
   function defaultProgress(){
@@ -862,6 +873,17 @@
       var isUnlocked = unlocked.indexOf(c.id)>=0;
       var rc=RARITY_CLASS[c.rarity]||"rarity-common";
       var prog = isUnlocked ? "" : ('<div class="prog">'+(c.prog?esc(c.prog(state)):"")+'</div>');
+      var ill = ILLUST[c.id];
+      if(ill){
+        html+='<div class="card illus '+rc+(isUnlocked?"":" locked")+'">'
+          +'<div class="art">'+(isUnlocked?ill:'<span class="qmark">❓</span>')+'</div>'
+          +'<div class="cname">'+(isUnlocked?c.name:"？？？")+'</div>'
+          +'<div class="rarity">'+c.rarity+'</div>'
+          +'<div class="ctext">'+(isUnlocked?c.text:"🔒 "+c.text)+'</div>'
+          +prog
+          +'</div>';
+        return;
+      }
       html+='<div class="card '+rc+(isUnlocked?"":" locked")+'">'
         +'<div class="medal">'+(isUnlocked?(CARD_ICONS[c.id]||c.emoji):'<span class="qmark">❓</span>')+'</div>'
         +'<div class="cname">'+(isUnlocked?c.name:"？？？")+'</div>'
