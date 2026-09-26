@@ -1,5 +1,5 @@
 // 研习魔典 · Service Worker —— 让 App 可安装、可离线打开
-var CACHE = "grimoire-v6";
+var CACHE = "grimoire-v7";
 var ASSETS = [
   "./",
   "./index.html",
