@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v8 就是最新版（足迹/任务跨设备自动合并）">v8</span>
+    <span class="ver" title="版本号：看到 v9 就是最新版（足迹有「只增不减」底账兜底，历史永不消失）">v9</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -571,6 +571,43 @@
       }catch(e){}
     }
   }
+  var LEDGER_KEY = "grimoire_ledger_v1";   // 足迹「底账」：只增不减，任何 bug 把 history 冲掉都能从这兜底恢复
+  function ledgerGet(){
+    try{ var a=JSON.parse(localStorage.getItem(LEDGER_KEY)); if(a && a.length!==undefined) return a; }catch(e){}
+    return [];
+  }
+  function ledgerPut(a){
+    try{ localStorage.setItem(LEDGER_KEY, JSON.stringify(a)); }catch(e){}
+  }
+  function ledgerAdd(e){
+    var a=ledgerGet(), k=e.d+"|"+e.n;
+    for(var i=0;i<a.length;i++){ if(a[i].d+"|"+a[i].n===k) return; }
+    a.push({d:e.d,n:e.n,s:e.s});
+    ledgerPut(a);
+  }
+  function ledgerRemove(d,n){
+    var a=ledgerGet(), k=d+"|"+n;
+    var out=a.filter(function(x){ return x.d+"|"+x.n!==k; });
+    if(out.length!==a.length) ledgerPut(out);
+  }
+  function ledgerAbsorb(){   // 把 history 里已有的足迹也吸进底账（底账只增不减）
+    var a=ledgerGet(), hist=state.history||[], seen={}, changed=false;
+    a.forEach(function(x){ seen[x.d+"|"+x.n]=1; });
+    hist.forEach(function(h){ if(!seen[h.d+"|"+h.n]){ seen[h.d+"|"+h.n]=1; a.push({d:h.d,n:h.n,s:h.s}); changed=true; } });
+    if(changed) ledgerPut(a);
+  }
+  function recoverFromLedger(){   // 载入时兜底：history 若被清空/丢失，从底账补回（只补不删）
+    var a=ledgerGet();
+    if(!a.length) return;
+    var h=state.history||[], have={}, added=false;
+    h.forEach(function(x){ have[x.d+"|"+x.n]=1; });
+    a.forEach(function(e){ if(!have[e.d+"|"+e.n]){ h.push({d:e.d,n:e.n,s:e.s}); have[e.d+"|"+e.n]=1; added=true; } });
+    if(added){
+      h.sort(function(x,y){ return x.d<y.d?-1:(x.d>y.d?1:0); });
+      state.history=h;
+      persist();
+    }
+  }
   function load(){
     migrateOld();
     var p=null, t=null;
@@ -585,12 +622,14 @@
     seedLife();
     seedTasks914();
     seedHistoryRecover();
+    recoverFromLedger();
   }
   function persist(){
     var prog={};
     for(var k in state){ if(k!=="tasks") prog[k]=state[k]; }
     try{ localStorage.setItem(PROGRESS_KEY, JSON.stringify(prog)); }catch(e){}
     try{ localStorage.setItem(TASKS_KEY, JSON.stringify(state.tasks)); }catch(e){}
+    ledgerAbsorb();   // 每次保存都让底账同步吸收足迹，确保底账永远 >= history
   }
   function save(){
     state._ts = Date.now();
@@ -968,6 +1007,7 @@
     if(!name){ toast("先写做了什么"); return; }
     if(!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast("日期格式应为 YYYY-MM-DD"); return; }
     (state.history=state.history||[]).push({d:date,n:name,s:stat});
+    ledgerAdd({d:date,n:name,s:stat});
     save(); render();
     toast("已补记 "+date+"「"+name+"」");
   }
@@ -1148,6 +1188,7 @@
       t.done=true; applyTask(t,1);
       if(t.repeat==="weekly") t.weekDone=weekKey();
       (state.history=state.history||[]).push({d:dayKey(),n:t.name,s:t.stat});
+      ledgerAdd({d:dayKey(),n:t.name,s:t.stat});
       sndDing();
       var w=taskWeight(t);
       afterChange("✨ 完成「"+t.name+"」：+"+STAT_GAIN*w+" "+statLabel(t.stat)+" · +"+XP_GAIN*w+" 经验 · -"+HP_COST+" 血");
@@ -1158,6 +1199,7 @@
       for(var i=h.length-1;i>=0;i--){
         if(h[i].n===t.name && h[i].d===dayKey()){ h.splice(i,1); break; }
       }
+      ledgerRemove(dayKey(), t.name);
       afterChange("↩ 撤销「"+t.name+"」");
     }
   }
