@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v5 就是最新版（足迹/任务跨设备自动合并）">v5</span>
+    <span class="ver" title="版本号：看到 v6 就是最新版（足迹/任务跨设备自动合并）">v6</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1383,7 +1383,8 @@
     local.energies = mergeObj(remote.energies, local.energies);
     if(!local.name) local.name = remote.name;
     if(!local.periodStart) local.periodStart = remote.periodStart;
-    local.tasks = mergeTasks(local.tasks, remote.tasks);
+    // 新设备（还没产生过真实数据）直接用云端的真实任务，避免把「好久以前」的默认种子又翻出来
+    local.tasks = (local._ts===0 && remote.tasks && remote.tasks.length) ? remote.tasks : mergeTasks(local.tasks, remote.tasks);
     // 长期任务：按 id 合并，步骤 done 取 OR
     var lq=local.quests||[], rq=remote.quests||[], qmap={}, qorder=[];
     lq.forEach(function(q){ if(q&&q.id){ qmap[q.id]=q; qorder.push(q.id); } });
