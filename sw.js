@@ -1,5 +1,5 @@
 // 研习魔典 · Service Worker —— 让 App 可安装、可离线打开
-var CACHE = "grimoire-v7";
+var CACHE = "grimoire-v8";
 var ASSETS = [
   "./",
   "./index.html",
@@ -29,7 +29,7 @@ self.addEventListener("fetch", function (e) {
   // 页面本身走「网络优先」：在线时总是拿到最新版（我这边更新后刷新即生效），离线才用缓存
   if (e.request.mode === "navigate") {
     e.respondWith(
-      fetch(e.request).then(function (res) {
+      fetch(e.request, {cache: "no-store"}).then(function (res) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put("./index.html", copy); });
         return res;
