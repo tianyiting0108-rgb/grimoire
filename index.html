@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v6 就是最新版（足迹/任务跨设备自动合并）">v6</span>
+    <span class="ver" title="版本号：看到 v7 就是最新版（足迹/任务跨设备自动合并）">v7</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1322,10 +1322,10 @@
 
     return base;
   }
-  // 只合并「足迹」（打卡记录），永不删除任何一条
-  function mergeHistory(base, other){
-    var bh = (base && base.history) || [];
-    var oh = (other && other.history) || [];
+  // 只合并「足迹」数组（打卡记录），永不删除任何一条
+  function mergeHistory(bh, oh){
+    bh = bh || [];
+    oh = oh || [];
     var seen={};
     bh.forEach(function(h){ seen[h.d+"|"+h.n]=1; });
     oh.forEach(function(h){ if(!seen[h.d+"|"+h.n]){ seen[h.d+"|"+h.n]=1; bh.push(h); } });
