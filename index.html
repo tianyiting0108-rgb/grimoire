@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v3 就是最新版">v3</span>
+    <span class="ver" title="版本号：看到 v5 就是最新版（足迹/任务跨设备自动合并）">v5</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -698,6 +698,7 @@
       h.sort(function(a,b){ return a.d<b.d?-1:(a.d>b.d?1:0); });
       state.history=h;
       persist();
+      if(syncEnabled()) schedulePush();   // 补回的足迹立即推回云端，防止再被旧设备冲掉
     }
   }
   function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
@@ -1321,7 +1322,7 @@
 
     return base;
   }
-  // 只合并「足迹」（打卡记录），永不删除任何一条；任务列表不合并（支持删除）
+  // 只合并「足迹」（打卡记录），永不删除任何一条
   function mergeHistory(base, other){
     var bh = (base && base.history) || [];
     var oh = (other && other.history) || [];
@@ -1329,6 +1330,71 @@
     bh.forEach(function(h){ seen[h.d+"|"+h.n]=1; });
     oh.forEach(function(h){ if(!seen[h.d+"|"+h.n]){ seen[h.d+"|"+h.n]=1; bh.push(h); } });
     return bh;
+  }
+  function maxNum(a,b){ a=(a===undefined||a===null)?0:a; b=(b===undefined||b===null)?0:b; return a>b?a:b; }
+  function minNum(a,b){
+    if(a===undefined||a===null) return b;
+    if(b===undefined||b===null) return a;
+    return a<b?a:b;
+  }
+  function unionArr(a,b){
+    var s={};
+    (a||[]).forEach(function(x){ if(x!==undefined&&x!==null) s[x]=1; });
+    (b||[]).forEach(function(x){ if(x!==undefined&&x!==null) s[x]=1; });
+    return Object.keys(s);
+  }
+  function mergeObj(a,b){   // b 的同名键覆盖 a
+    var out={};
+    for(var k in (a||{})) out[k]=a[k];
+    for(var k in (b||{})) out[k]=b[k];
+    return out;
+  }
+  function mergeTasks(lt, rt){
+    lt=(lt&&lt.length!==undefined)?lt:[];
+    rt=(rt&&rt.length!==undefined)?rt:[];
+    var map={}, order=[];
+    function add(t){
+      if(!t) return;
+      var k=t.id||("n:"+t.name);
+      if(!map[k]){ map[k]=t; order.push(k); }
+      else if(t.done) map[k].done=true;   // 任一设备勾选过就保持已完成
+    }
+    lt.forEach(add);
+    rt.forEach(add);
+    var out=order.map(function(k){ return map[k]; });
+    out.forEach(function(t){ if(t.repeat===true) t.repeat="daily"; });
+    return out;
+  }
+  // 把「云端」数据合并进「本地」：各字段取并集/取大，任何一边都不丢。返回是否产生了变化。
+  function syncMerge(local, remote){
+    var before=JSON.stringify(local);
+    local.xp = maxNum(local.xp, remote.xp);
+    local.totalDone = maxNum(local.totalDone, remote.totalDone);
+    local.lastLevel = maxNum(local.lastLevel, remote.lastLevel);
+    local.hp = maxNum(local.hp, remote.hp);
+    local.hpMin = minNum(local.hpMin, remote.hpMin);
+    local.stats = local.stats || {int:0,str:0,cha:0,will:0};
+    var rs = remote.stats || {};
+    ["int","str","cha","will"].forEach(function(k){ local.stats[k]=maxNum(local.stats[k], rs[k]); });
+    local.history = mergeHistory(local.history, remote.history);
+    local.unlocked = unionArr(local.unlocked, remote.unlocked);
+    local.outDays = unionArr(local.outDays, remote.outDays);
+    local.moods = mergeObj(remote.moods, local.moods);
+    local.energies = mergeObj(remote.energies, local.energies);
+    if(!local.name) local.name = remote.name;
+    if(!local.periodStart) local.periodStart = remote.periodStart;
+    local.tasks = mergeTasks(local.tasks, remote.tasks);
+    // 长期任务：按 id 合并，步骤 done 取 OR
+    var lq=local.quests||[], rq=remote.quests||[], qmap={}, qorder=[];
+    lq.forEach(function(q){ if(q&&q.id){ qmap[q.id]=q; qorder.push(q.id); } });
+    rq.forEach(function(q){
+      if(!q||!q.id) return;
+      if(qmap[q.id]){
+        (q.steps||[]).forEach(function(rs2,i){ if(rs2.done && qmap[q.id].steps && qmap[q.id].steps[i]) qmap[q.id].steps[i].done=true; });
+      } else { qmap[q.id]=q; qorder.push(q.id); }
+    });
+    local.quests = qorder.map(function(id){ return qmap[id]; });
+    return JSON.stringify(local)!==before;
   }
   // 只把本地「多出来的任务」并进云端；云端已有成长数值/足迹一律保留，绝不用旧设备数据覆盖
   function pushSeed(){
@@ -1375,10 +1441,11 @@
           sha=j.sha;
           try{
             var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-            state.history = mergeHistory(state.history, remote.history);   // 只合并云端足迹，任务以本地为准（支持删除）
+            syncMerge(state, remote);   // 先把云端数据并进来，任何一边都不丢
             persist();
           }catch(e){}
         }
+        state._ts=Date.now();
         var content=b64Encode(JSON.stringify(state));
         var body={message:"sync "+dayKey(), content:content};
         if(sha) body.sha=sha;
@@ -1394,14 +1461,13 @@
       .then(function(j){
         if(!j){ pushToCloud(); return; }
         var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-        var rt=remote._ts||0, lt=state._ts||0;
-        if(rt > lt){
-          remote.history = mergeHistory(remote.history, state.history);   // 保留本地足迹，任务以云端为准
-          adoptRemote(remote);
-          lastSyncAt=Date.now();
-          setSyncStatus("已从云端更新 "+fmtTime(lastSyncAt));
-          toast("☁️ 已同步最新数据");
-        }else if(lt > rt){
+        var changed=syncMerge(state, remote);   // 双向合并，任何一边都不丢
+        // 云端足迹被旧设备冲掉过、而本地还留着 → 也算有变化，推回云端补齐
+        if(!changed && (state.history||[]).length > (remote.history||[]).length) changed=true;
+        persist();
+        if(changed){
+          render();
+          toast("☁️ 已合并最新数据");
           pushToCloud();
         }else{
           lastSyncAt=Date.now();
@@ -1418,15 +1484,18 @@
     setSyncStatus("连接中…");
     var first = !localStorage.getItem("grimoire_sync_onboarded");
     if(first){
-      // 这台设备第一次连接：云端优先（避免覆盖另一台设备已有的数据）
+      // 这台设备第一次连接：云端与本地合并（任何一边都不覆盖），再推回云端
       fetch(apiUrl(),{headers:getHeaders()})
         .then(function(r){ return r.status===404 ? null : (r.ok ? r.json() : Promise.reject(new Error("c "+r.status))); })
         .then(function(j){
           if(j){
             var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-            adoptRemote(remote);
+            syncMerge(state, remote);
+            persist();
+            render();
+            pushToCloud();
             setSyncStatus("已从云端同步");
-            toast("☁️ 已从云端同步数据");
+            toast("☁️ 已合并并同步数据");
           }else{
             pushToCloud();
           }
