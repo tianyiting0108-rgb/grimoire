@@ -382,7 +382,7 @@
       <section class="panel">
         <h2>图鉴 <span class="hint">做到即解锁</span></h2>
         <div class="collect-count" id="collectCount"></div>
-        <div class="cards" id="cards"></div>
+        <button class="primary" id="openCodexBtn">📖 打开图鉴</button>
       </section>
 
       <section class="panel">
@@ -413,13 +413,21 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v12 就是最新版（足迹列表显示全部，不丢记录）">v12</span>
+    <span class="ver" title="版本号：看到 v13 就是最新版（图鉴改为点击进入收藏页；足迹列表显示全部，不丢记录）">v13</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
 </div>
 
 <div id="toast"></div>
+<div id="codexView" style="display:none;position:fixed;inset:0;background:linear-gradient(160deg,#f6f0e0,#efe6d0);z-index:120;overflow:auto;">
+  <div style="position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(246,240,224,.95);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);z-index:2;">
+    <button id="closeCodexBtn" class="ghost" style="margin:0;">← 返回</button>
+    <h3 style="margin:0;letter-spacing:2px;">📖 图鉴</h3>
+    <span class="collect-count" id="codexCount" style="margin:0 0 0 auto;"></span>
+  </div>
+  <div class="cards" id="codexCards" style="padding:16px 16px 40px;"></div>
+</div>
 <div id="modal"><div class="modal-box" id="modalBox"></div></div>
 <div id="syncModal" style="display:none;position:fixed;inset:0;background:rgba(42,58,47,.55);z-index:110;align-items:center;justify-content:center;padding:20px;">
   <div class="modal-box" style="text-align:left;">
@@ -474,7 +482,17 @@
     {id:"c7",name:"血之彼岸",emoji:"🌘",rarity:"史诗",text:"血条一度跌到 40 以下。",cond:function(s){return s.hpMin<40;},prog:function(s){return "当前最低 "+s.hpMin+" / 40";}},
     {id:"c8",name:"破晓者",emoji:"⚔️",rarity:"史诗",text:"任一项属性达到 60。",cond:function(s){return Math.max(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)>=60;},prog:function(s){return "最高属性 "+Math.max(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)+" / 60";}},
     {id:"c9",name:"四象归一",emoji:"✨",rarity:"史诗",text:"四项属性均达到 30。",cond:function(s){return ["int","str","cha","will"].every(function(k){return s.stats[k]>=30;});},prog:function(s){return "最低属性 "+Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)+" / 30";}},
-    {id:"c10",name:"研习大师",emoji:"🔮",rarity:"传说",text:"达到 5 级。",cond:function(s){return levelOf(s)>=5;},prog:function(s){return "当前等级 "+levelOf(s)+" / 5";}}
+    {id:"c10",name:"研习大师",emoji:"🔮",rarity:"传说",text:"达到 5 级。",cond:function(s){return levelOf(s)>=5;},prog:function(s){return "当前等级 "+levelOf(s)+" / 5";}},
+    {id:"c11",name:"日课成习",emoji:"📅",rarity:"稀有",text:"累计完成五十次日课。",cond:function(s){return s.totalDone>=50;},prog:function(s){return "累计 "+s.totalDone+" / 50 次";}},
+    {id:"c12",name:"行者无疆",emoji:"👣",rarity:"稀有",text:"累计出门二十天。",cond:function(s){return (s.outDays||[]).length>=20;},prog:function(s){return "出门 "+(s.outDays||[]).length+" / 20 天";}},
+    {id:"c13",name:"智慧通神",emoji:"🧠",rarity:"史诗",text:"智力达到 100。",cond:function(s){return s.stats.int>=100;},prog:function(s){return "智力 "+s.stats.int+" / 100";}},
+    {id:"c14",name:"均衡之道",emoji:"⚖️",rarity:"史诗",text:"四项属性均达到 50。",cond:function(s){return Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)>=50;},prog:function(s){return "最低属性 "+Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)+" / 50";}},
+    {id:"c15",name:"百炼成钢",emoji:"🔥",rarity:"史诗",text:"累计完成八十次日课。",cond:function(s){return s.totalDone>=80;},prog:function(s){return "累计 "+s.totalDone+" / 80 次";}},
+    {id:"c16",name:"登峰造极",emoji:"🏔️",rarity:"传说",text:"达到 8 级。",cond:function(s){return levelOf(s)>=8;},prog:function(s){return "当前等级 "+levelOf(s)+" / 8";}},
+    {id:"c17",name:"超凡之躯",emoji:"🌟",rarity:"传说",text:"四项属性均达到 80。",cond:function(s){return Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)>=80;},prog:function(s){return "最低属性 "+Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)+" / 80";}},
+    {id:"c18",name:"星辉加冕",emoji:"👑",rarity:"传说",text:"达到 10 级。",cond:function(s){return levelOf(s)>=10;},prog:function(s){return "当前等级 "+levelOf(s)+" / 10";}},
+    {id:"c19",name:"千锤百炼",emoji:"⚒️",rarity:"传说",text:"累计完成一百五十次日课。",cond:function(s){return s.totalDone>=150;},prog:function(s){return "累计 "+s.totalDone+" / 150 次";}},
+    {id:"c20",name:"魔典之主",emoji:"🗝️",rarity:"传说",text:"达到 12 级且四项属性均达到 120。",cond:function(s){return levelOf(s)>=12 && Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)>=120;},prog:function(s){return "等级 "+levelOf(s)+"/12 · 最低属性 "+Math.min(s.stats.int,s.stats.str,s.stats.cha,s.stats.will)+"/120";}}
   ];
 
   var RARITY_CLASS = {"普通":"rarity-common","稀有":"rarity-rare","史诗":"rarity-epic","传说":"rarity-legend"};
@@ -829,7 +847,7 @@
   }
 
   function render(){
-    renderHeader(); renderStats(); renderTasks(); renderQuests(); renderCards(); renderHistory(); renderLife();
+    renderHeader(); renderStats(); renderTasks(); renderQuests(); renderCodexSummary(); renderCards(); renderHistory(); renderLife();
   }
 
   function renderHeader(){
@@ -933,10 +951,12 @@
     return {text:"剩 "+diff+" 天",cls:"cd-far"};
   }
 
+  function renderCodexSummary(){
+    document.getElementById("collectCount").textContent="已收集 "+state.unlocked.length+" / "+CARDS.length;
+  }
   function renderCards(){
     var unlocked=state.unlocked;
-    var count=unlocked.length;
-    document.getElementById("collectCount").textContent="已收集 "+count+" / "+CARDS.length;
+    document.getElementById("codexCount").textContent="已收集 "+unlocked.length+" / "+CARDS.length;
     var html="";
     CARDS.forEach(function(c){
       var isUnlocked = unlocked.indexOf(c.id)>=0;
@@ -953,8 +973,10 @@
         +prog
         +'</div>';
     });
-    document.getElementById("cards").innerHTML=html;
+    document.getElementById("codexCards").innerHTML=html;
   }
+  function openCodex(){ document.getElementById("codexView").style.display="block"; renderCards(); }
+  function closeCodex(){ document.getElementById("codexView").style.display="none"; }
 
   function esc(s){
     return String(s).replace(/[&<>"']/g,function(c){
@@ -1646,6 +1668,8 @@
     else if(t.hasAttribute("data-en")){ setEnergy(parseInt(t.getAttribute("data-en"),10)); }
     else if(t.hasAttribute("data-del")){ delTask(t.getAttribute("data-del")); }
     else if(t.hasAttribute("data-deadline")){ editDeadline(t.getAttribute("data-deadline")); }
+    else if(t.id==="openCodexBtn"){ openCodex(); }
+    else if(t.id==="closeCodexBtn"){ closeCodex(); }
   });
 
   document.addEventListener("change",function(e){
