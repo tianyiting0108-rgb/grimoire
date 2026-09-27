@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v13 就是最新版（图鉴改为点击进入收藏页；足迹列表显示全部，不丢记录）">v13</span>
+    <span class="ver" title="版本号：看到 v14 就是最新版（图鉴可点开看大图；足迹列表显示全部，不丢记录）">v14</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -426,7 +426,12 @@
     <h3 style="margin:0;letter-spacing:2px;">📖 图鉴</h3>
     <span class="collect-count" id="codexCount" style="margin:0 0 0 auto;"></span>
   </div>
+  <div class="hint" style="padding:10px 16px 0;">点击任意已解锁的卡片，可看大图</div>
   <div class="cards" id="codexCards" style="padding:16px 16px 40px;"></div>
+</div>
+<div id="bigView" style="display:none;position:fixed;inset:0;background:rgba(18,14,30,.94);z-index:130;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;">
+  <img id="bigImg" src="" alt="" style="max-width:94vw;max-height:94vh;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.65);">
+  <button id="bigClose" class="ghost" style="position:absolute;top:14px;right:14px;margin:0;background:rgba(255,255,255,.12);color:#fff;">✕ 关闭</button>
 </div>
 <div id="modal"><div class="modal-box" id="modalBox"></div></div>
 <div id="syncModal" style="display:none;position:fixed;inset:0;background:rgba(42,58,47,.55);z-index:110;align-items:center;justify-content:center;padding:20px;">
@@ -965,7 +970,7 @@
       var art = isUnlocked
         ? '<div class="art"><img src="art/'+c.id+'.jpg" alt="'+esc(c.name)+'" loading="lazy"></div>'
         : '<div class="art"><div class="cardback"><span class="cb-sigil">✦</span><span class="cb-lock">🔒 未解锁</span></div></div>';
-      html+='<div class="card illus '+rc+(isUnlocked?"":" locked")+'">'
+      html+='<div class="card illus '+rc+(isUnlocked?"":" locked")+'"'+(isUnlocked?' data-big="'+c.id+'"':'')+'>'
         + art
         +'<div class="cname">'+(isUnlocked?c.name:"？？？")+'</div>'
         +'<div class="rarity">'+c.rarity+'</div>'
@@ -977,6 +982,11 @@
   }
   function openCodex(){ document.getElementById("codexView").style.display="block"; renderCards(); }
   function closeCodex(){ document.getElementById("codexView").style.display="none"; }
+  function openBig(id){
+    document.getElementById("bigImg").src="art/"+id+".jpg";
+    document.getElementById("bigView").style.display="flex";
+  }
+  function closeBig(){ document.getElementById("bigView").style.display="none"; }
 
   function esc(s){
     return String(s).replace(/[&<>"']/g,function(c){
@@ -1671,6 +1681,14 @@
     else if(t.id==="openCodexBtn"){ openCodex(); }
     else if(t.id==="closeCodexBtn"){ closeCodex(); }
   });
+
+  document.getElementById("codexCards").addEventListener("click",function(e){
+    var c=e.target;
+    while(c && c!==this && !c.getAttribute("data-big")){ c=c.parentNode; }
+    if(c && c.getAttribute("data-big")){ openBig(c.getAttribute("data-big")); }
+  });
+
+  document.getElementById("bigView").addEventListener("click",function(){ closeBig(); });
 
   document.addEventListener("change",function(e){
     var t=e.target;
