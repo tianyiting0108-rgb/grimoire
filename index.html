@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v10 就是最新版（日课每天自动刷新 + 足迹只增不减）">v10</span>
+    <span class="ver" title="版本号：看到 v11 就是最新版（清理日课前先补足迹，绝不丢记录）">v11</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -779,12 +779,23 @@
     if(t.repeat==="weekly") return true;
     return !t.done || (t.doneDay||"")===dayKey();
   }
-  // 载入时把「过期/脏」的任务状态纠正：清掉过期的已完成一次性任务，重置该刷新的每日习惯
+  // 把「已完成的一次性任务」的足迹补进 history（补全之前可能被冲掉的记录），再让任务本体被清掉
+  function harvestFootprint(t){
+    var d = t.doneDay || dayKey();
+    var h = state.history || (state.history = []);
+    var exists = h.some(function(x){ return x.d===d && x.n===t.name; });
+    if(!exists){
+      h.push({d:d, n:t.name, s:t.stat||"int"});
+      ledgerAdd({d:d, n:t.name, s:t.stat||"int"});
+    }
+  }
+  // 载入时把「过期/脏」的任务状态纠正：先把已完成任务的足迹补全，再清掉过期任务、重置每日习惯
   function normalizeDone(){
-    var before=JSON.stringify(state.tasks);
+    var tb=JSON.stringify(state.tasks), hb=JSON.stringify(state.history);
+    (state.tasks||[]).forEach(function(t){ if(t.done && !taskAlive(t)) harvestFootprint(t); });
     state.tasks = (state.tasks||[]).filter(taskAlive);
     state.tasks.forEach(function(t){ t.done=effectiveDone(t); if(t.repeat===true) t.repeat="daily"; });
-    if(JSON.stringify(state.tasks)!==before) persist();
+    if(JSON.stringify(state.tasks)!==tb || JSON.stringify(state.history)!==hb) persist();
   }
   function checkDayRollover(){
     var k=dayKey();
@@ -799,6 +810,7 @@
       if(t.done !== true) return true;          // 未完成留着
       if(t.habit === true) return true;          // 每日习惯留着（上面已重置）
       if(t.repeat === "weekly") return true;     // 每周任务留着
+      harvestFootprint(t);                        // 删掉前先把足迹补进 history，不丢记录
       return false;                               // 完成的一次性任务删掉
     });
     state.restDate=k; state.restUsed=0;
