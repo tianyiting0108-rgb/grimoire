@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v9 就是最新版（足迹有「只增不减」底账兜底，历史永不消失）">v9</span>
+    <span class="ver" title="版本号：看到 v10 就是最新版（日课每天自动刷新 + 足迹只增不减）">v10</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -618,6 +618,7 @@
     state.tasks = (t && t.length!==undefined) ? t : defaultTasks();
     state.tasks.forEach(function(tk){ if(tk.repeat===true) tk.repeat="daily"; });
     normalizeHabits();
+    normalizeDone();
     seedHistory911();
     seedLife();
     seedTasks914();
@@ -766,13 +767,32 @@
       else if(t.repeat==="daily"){ t.repeat=false; delete t.habit; }
     });
   }
+  // 「今天」这个任务到底算不算完成：每日习惯看完成日是否是今天，每周任务看周，一次性看是否勾过
+  function effectiveDone(t){
+    if(t.habit===true || t.repeat==="daily"){ return (t.doneDay||"")===dayKey(); }
+    if(t.repeat==="weekly"){ return t.weekDone ? (t.weekDone===weekKey()) : !!t.done; }
+    return !!t.done;
+  }
+  // 任务是否还该留在列表里：完成的一次性任务，若不是今天完成的，就该在昨夜被清掉
+  function taskAlive(t){
+    if(t.habit===true || t.repeat==="daily") return true;
+    if(t.repeat==="weekly") return true;
+    return !t.done || (t.doneDay||"")===dayKey();
+  }
+  // 载入时把「过期/脏」的任务状态纠正：清掉过期的已完成一次性任务，重置该刷新的每日习惯
+  function normalizeDone(){
+    var before=JSON.stringify(state.tasks);
+    state.tasks = (state.tasks||[]).filter(taskAlive);
+    state.tasks.forEach(function(t){ t.done=effectiveDone(t); if(t.repeat===true) t.repeat="daily"; });
+    if(JSON.stringify(state.tasks)!==before) persist();
+  }
   function checkDayRollover(){
     var k=dayKey();
     if(!state.dayKey){ state.dayKey=k; return; } // 首次加载，只初始化
     if(state.dayKey===k) return;
     state.tasks.forEach(function(t){
-      if(t.habit===true){ t.done=false; }
-      else if(t.repeat==="weekly" && t.done && t.weekDone!==weekKey()){ t.done=false; }
+      if(t.habit===true){ t.done=false; t.doneDay=""; }
+      else if(t.repeat==="weekly" && t.done && t.weekDone!==weekKey()){ t.done=false; t.doneDay=""; }
     });
     // 完成的一次性日课，第二天自动从列表清掉（足迹/分数已存在 history，不受影响）
     state.tasks = state.tasks.filter(function(t){
@@ -1185,7 +1205,7 @@
   function toggleTask(id){
     var t=state.tasks.find(function(x){return x.id===id;}); if(!t)return;
     if(!t.done){
-      t.done=true; applyTask(t,1);
+      t.done=true; t.doneDay=dayKey(); applyTask(t,1);
       if(t.repeat==="weekly") t.weekDone=weekKey();
       (state.history=state.history||[]).push({d:dayKey(),n:t.name,s:t.stat});
       ledgerAdd({d:dayKey(),n:t.name,s:t.stat});
@@ -1194,7 +1214,7 @@
       afterChange("✨ 完成「"+t.name+"」：+"+STAT_GAIN*w+" "+statLabel(t.stat)+" · +"+XP_GAIN*w+" 经验 · -"+HP_COST+" 血");
       flashStat(t.stat); flashStat("hp");
     }else{
-      t.done=false; applyTask(t,-1);
+      t.done=false; t.doneDay=""; applyTask(t,-1);
       var h=state.history||[];
       for(var i=h.length-1;i>=0;i--){
         if(h[i].n===t.name && h[i].d===dayKey()){ h.splice(i,1); break; }
@@ -1397,13 +1417,18 @@
     var map={}, order=[];
     function add(t){
       if(!t) return;
+      if(!taskAlive(t)) return;   // 过期的一次性完成任务（昨天该清掉的）不再加回来
       var k=t.id||("n:"+t.name);
       if(!map[k]){ map[k]=t; order.push(k); }
-      else if(t.done) map[k].done=true;   // 任一设备勾选过就保持已完成
+      else{
+        if((t.doneDay||"") > (map[k].doneDay||"")) map[k].doneDay=t.doneDay;
+        if((t.weekDone||"") > (map[k].weekDone||"")) map[k].weekDone=t.weekDone;
+        if(t.done) map[k].done=true;
+      }
     }
     lt.forEach(add);
     rt.forEach(add);
-    var out=order.map(function(k){ return map[k]; });
+    var out=order.map(function(k){ var t=map[k]; t.done=effectiveDone(t); return t; });
     out.forEach(function(t){ if(t.repeat===true) t.repeat="daily"; });
     return out;
   }
