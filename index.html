@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v15 就是最新版（主页显示 10 个新图鉴任务；图鉴可点开看大图；足迹列表显示全部，不丢记录）">v15</span>
+    <span class="ver" title="版本号：看到 v16 就是最新版（图鉴大图用高清原图；主页显示 10 个新图鉴任务；足迹列表显示全部，不丢记录）">v16</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1006,7 +1006,9 @@
   function openCodex(){ document.getElementById("codexView").style.display="block"; renderCards(); }
   function closeCodex(){ document.getElementById("codexView").style.display="none"; }
   function openBig(id){
-    document.getElementById("bigImg").src="art/"+id+".jpg";
+    var img=document.getElementById("bigImg");
+    img.onerror=function(){ this.onerror=null; this.src="art/"+id+".jpg"; };
+    img.src="art/"+id+"_hd.jpg";
     document.getElementById("bigView").style.display="flex";
   }
   function closeBig(){ document.getElementById("bigView").style.display="none"; }
