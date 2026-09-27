@@ -413,7 +413,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v11 就是最新版（清理日课前先补足迹，绝不丢记录）">v11</span>
+    <span class="ver" title="版本号：看到 v12 就是最新版（足迹列表显示全部，不丢记录）">v12</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1013,8 +1013,9 @@
       list.innerHTML='<div class="hint">还没有完成记录，去勾一个日课试试吧。</div>';
       return;
     }
-    var recent=hist.slice(-15).reverse();
-    var items=recent.map(function(h){
+    var recent=hist.slice().reverse();   // 显示全部足迹（不再只显示最近 15 条），最近在前
+    var items='<div class="hint">共 '+hist.length+' 条足迹 · 全部（最近在前）</div>';
+    items+=recent.map(function(h){
       return '<div class="hist-item"><span class="hist-date">'+fmtDay(h.d)+'</span>'
         +'<span class="hist-name">'+esc(h.n)+'</span>'
         +'<span class="hist-stat">+'+statLabel(h.s)+'</span></div>';
@@ -1464,16 +1465,21 @@
     if(!local.periodStart) local.periodStart = remote.periodStart;
     // 新设备（还没产生过真实数据）直接用云端的真实任务，避免把「好久以前」的默认种子又翻出来
     local.tasks = (local._ts===0 && remote.tasks && remote.tasks.length) ? remote.tasks : mergeTasks(local.tasks, remote.tasks);
-    // 长期任务：按 id 合并，步骤 done 取 OR
+    // 长期任务：按「名字」去重合并（默认任务在两台设备上各自随机生成 id，按 id 会重复），步骤 done 取 OR
     var lq=local.quests||[], rq=remote.quests||[], qmap={}, qorder=[];
-    lq.forEach(function(q){ if(q&&q.id){ qmap[q.id]=q; qorder.push(q.id); } });
-    rq.forEach(function(q){
-      if(!q||!q.id) return;
-      if(qmap[q.id]){
-        (q.steps||[]).forEach(function(rs2,i){ if(rs2.done && qmap[q.id].steps && qmap[q.id].steps[i]) qmap[q.id].steps[i].done=true; });
-      } else { qmap[q.id]=q; qorder.push(q.id); }
-    });
-    local.quests = qorder.map(function(id){ return qmap[id]; });
+    function addQ(q){
+      if(!q||!q.name) return;
+      var k=q.name;
+      if(!qmap[k]){ qmap[k]=q; qorder.push(k); }
+      else{
+        var a=qmap[k];
+        (q.steps||[]).forEach(function(rs2,i){ if(rs2.done && a.steps && a.steps[i]) a.steps[i].done=true; });
+        if(q.deadline && !a.deadline) a.deadline=q.deadline;
+      }
+    }
+    lq.forEach(addQ);
+    rq.forEach(addQ);
+    local.quests = qorder.map(function(k){ return qmap[k]; });
     return JSON.stringify(local)!==before;
   }
   // 只把本地「多出来的任务」并进云端；云端已有成长数值/足迹一律保留，绝不用旧设备数据覆盖
