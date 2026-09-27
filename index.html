@@ -383,6 +383,7 @@
         <h2>图鉴 <span class="hint">做到即解锁</span></h2>
         <div class="collect-count" id="collectCount"></div>
         <button class="primary" id="openCodexBtn">📖 打开图鉴</button>
+        <div id="codexGoals"></div>
       </section>
 
       <section class="panel">
@@ -413,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v14 就是最新版（图鉴可点开看大图；足迹列表显示全部，不丢记录）">v14</span>
+    <span class="ver" title="版本号：看到 v15 就是最新版（主页显示 10 个新图鉴任务；图鉴可点开看大图；足迹列表显示全部，不丢记录）">v15</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -852,7 +853,7 @@
   }
 
   function render(){
-    renderHeader(); renderStats(); renderTasks(); renderQuests(); renderCodexSummary(); renderCards(); renderHistory(); renderLife();
+    renderHeader(); renderStats(); renderTasks(); renderQuests(); renderCodexSummary(); renderCodexGoals(); renderCards(); renderHistory(); renderLife();
   }
 
   function renderHeader(){
@@ -958,6 +959,28 @@
 
   function renderCodexSummary(){
     document.getElementById("collectCount").textContent="已收集 "+state.unlocked.length+" / "+CARDS.length;
+  }
+  function renderCodexGoals(){
+    var box=document.getElementById("codexGoals");
+    if(!box) return;
+    var goals=CARDS.slice(10);
+    var unlocked=state.unlocked||[];
+    var rcol={"普通":"var(--common)","稀有":"var(--rare)","史诗":"var(--epic)","传说":"var(--legend)"};
+    var html='<div style="font-size:11px;color:var(--ink-soft);letter-spacing:1px;margin:14px 0 6px;">🎯 新任务 · '+goals.length+' 个待达成</div>';
+    goals.forEach(function(c){
+      var isUn=unlocked.indexOf(c.id)>=0;
+      var color=rcol[c.rarity]||"var(--common)";
+      html+='<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px;background:'+(isUn?'linear-gradient(165deg,#fdf6e0,#f7e7b8)':'#fffdf5')+';'+(isUn?'box-shadow:0 0 0 1px var(--legend) inset;':'')+'">'
+        +'<span style="font-size:18px;">'+c.emoji+'</span>'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="display:flex;align-items:baseline;gap:6px;"><span style="font-weight:bold;font-size:13px;">'+esc(c.name)+'</span><span style="font-size:10px;color:'+color+';font-weight:bold;">'+c.rarity+'</span></div>'
+        +'<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">'+esc(c.text)+'</div>'
+        +'<div style="font-size:10px;color:var(--ink-soft);opacity:.85;">'+esc(c.prog?c.prog(state):"")+'</div>'
+        +'</div>'
+        +'<span style="font-size:15px;">'+(isUn?'✓':'🔒')+'</span>'
+        +'</div>';
+    });
+    box.innerHTML=html;
   }
   function renderCards(){
     var unlocked=state.unlocked;
