@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v16 就是最新版（图鉴大图用高清原图；主页显示 10 个新图鉴任务；足迹列表显示全部，不丢记录）">v16</span>
+    <span class="ver" title="版本号：看到 v17 就是最新版（新增睡眠记录 + 趋势图；图鉴大图用高清原图；足迹列表显示全部，不丢记录）">v17</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -555,7 +555,8 @@
       periodStart:"",
       outDays:[],
       moods:{},
-      energies:{}
+      energies:{},
+      sleep:{}
     };
   }
   function defaultTasks(){
@@ -565,7 +566,8 @@
       {id:uid(),name:"整理 2 位导师的申请材料（CV 等）",stat:"int",done:false},
       {id:uid(),name:"设置周一（9/14）定时发送 2 封套瓷信",stat:"will",done:false},
       {id:uid(),name:"读 1 篇统计遗传方法论文",stat:"int",done:false,repeat:"daily",habit:true},
-      {id:uid(),name:"锻炼 30 分钟",stat:"str",done:false,repeat:"daily",habit:true}
+      {id:uid(),name:"锻炼 30 分钟",stat:"str",done:false,repeat:"daily",habit:true},
+      {id:uid(),name:"微锻炼（动了就算）",stat:"str",done:false,repeat:"daily",habit:true}
     ];
   }
 
@@ -1185,6 +1187,18 @@
     }
     html+='<div class="life-row"><span class="life-label">⚡ 精力</span><span class="mood-row">'+enBtns+'</span></div>';
 
+    // 睡眠
+    var sl = (state.sleep && state.sleep[dayKey()]) || {};
+    html+='<div class="life-row"><span class="life-label">😴 睡眠</span>'
+      +'<span class="mood-row" style="gap:5px;">'
+      +'<input type="time" id="sleepWake" value="'+esc(sl.wake||"")+'" title="今早几点起床" style="padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:#fffdf5;color:var(--ink);font-family:inherit;font-size:12px;width:84px;">'
+      +'<span style="color:var(--ink-soft);font-size:10px;">起床</span>'
+      +'<input type="time" id="sleepSleep" value="'+esc(sl.sleep||"")+'" title="昨晚几点入睡" style="padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:#fffdf5;color:var(--ink);font-family:inherit;font-size:12px;width:84px;">'
+      +'<span style="color:var(--ink-soft);font-size:10px;">入睡</span>'
+      +'<button class="ghost" id="saveSleepBtn" style="margin:0;">记</button>'
+      +'</span></div>';
+    html+=sleepChartHTML();
+
     document.getElementById("life").innerHTML=html;
   }
   function markPeriod(){
@@ -1211,6 +1225,82 @@
     state.energies[dayKey()]=n;
     save(); render();
     toast("今日精力："+n+"/5");
+  }
+  function timeToMin(t){
+    if(!t) return null;
+    var m=/^(\d{1,2}):(\d{2})$/.exec(t);
+    if(!m) return null;
+    return parseInt(m[1],10)*60 + parseInt(m[2],10);
+  }
+  function minToTime(m){
+    m=((Math.round(m)%1440)+1440)%1440;
+    var h=Math.floor(m/60), r=m%60;
+    return (h<10?"0":"")+h+":"+(r<10?"0":"")+r;
+  }
+  function fmtDur(m){
+    if(m==null||isNaN(m)) return "--";
+    m=Math.round(m);
+    var h=Math.floor(m/60), r=m%60;
+    return h+"h"+(r<10?"0":"")+r;
+  }
+  function sleepStats(days){
+    var ws=0, ss=0, wn=0, sn=0;
+    days.forEach(function(d){
+      var w=timeToMin(d.wake), s=timeToMin(d.sleep);
+      if(w!=null){ ws+=w; wn++; }
+      if(s!=null){ ss+=s; sn++; }
+    });
+    return {avgW: wn?minToTime(ws/wn):null, avgS: sn?minToTime(ss/sn):null, dur:(wn&&sn)?fmtDur((ws/wn+1440)-(ss/sn)):null};
+  }
+  function sleepChartHTML(){
+    var sleep = state.sleep || {};
+    var days=[];
+    for(var i=13;i>=0;i--){
+      var k=dayKeyOffset(i);
+      var v=sleep[k];
+      if(v && (v.wake || v.sleep)) days.push({k:k, wake:v.wake, sleep:v.sleep});
+    }
+    if(days.length<2){
+      return '<div class="life-hint">😴 记录几天起床/入睡时间，就能看到睡眠趋势图</div>';
+    }
+    var st=sleepStats(days);
+    var W=332, H=104, padB=12;
+    var ymin=18*60, ymax=36*60;   // 18:00 ～ 次日 12:00
+    function yy(m){ return padB + (ymax - m)/(ymax-ymin)*(H-padB); }
+    var n=days.length, step=(n>1)?(W/(n-1)):0;
+    var bars="", dots="";
+    days.forEach(function(d,i){
+      var x=(n>1)? i*step : W/2;
+      var w=timeToMin(d.wake), s=timeToMin(d.sleep);
+      if(w!=null && s!=null){
+        var y1=yy(s), y2=yy(w+1440);
+        bars += '<line x1="'+x+'" y1="'+y1+'" x2="'+x+'" y2="'+y2+'" stroke="#8f7bd0" stroke-width="7" stroke-linecap="round" opacity="0.30"/>';
+        bars += '<text x="'+x+'" y="'+(y2-3)+'" font-size="6.5" text-anchor="middle" fill="#6b5c9e">'+fmtDur((w+1440)-s)+'</text>';
+      }
+      if(w!=null){ dots += '<circle cx="'+x+'" cy="'+yy(w+1440)+'" r="2.6" fill="#e0a63a"/>'; }
+      if(s!=null){ dots += '<circle cx="'+x+'" cy="'+yy(s)+'" r="2.6" fill="#7c6fb0"/>'; }
+    });
+    var ticks="";
+    [18,24,30,36].forEach(function(h){
+      var label = h===24 ? "0点" : (h>24 ? (h-24)+"点" : h+"点");
+      ticks += '<text x="2" y="'+(yy(h*60)+2)+'" font-size="6.5" fill="#9a9a8a">'+label+'</text>';
+    });
+    var svg='<svg viewBox="0 0 '+W+' '+(H+4)+'" style="width:100%;height:auto;display:block;margin-top:6px;">'+ticks+bars+dots+'</svg>';
+    return '<div class="life-hint" style="margin-top:6px;">近14天 · 平均入睡 '+(st.avgS||"--")+' · 起床 '+(st.avgW||"--")+' · 睡眠 '+(st.dur||"--")+'</div>'
+      + svg
+      + '<div class="life-hint" style="display:flex;gap:14px;margin-top:2px;"><span>🟣 入睡</span><span>🟠 起床</span></div>';
+  }
+  function saveSleep(){
+    var w=document.getElementById("sleepWake").value;
+    var s=document.getElementById("sleepSleep").value;
+    if(!w && !s){ toast("先填起床/入睡时间"); return; }
+    state.sleep = state.sleep||{};
+    var cur = state.sleep[dayKey()] || {};
+    if(w) cur.wake=w;
+    if(s) cur.sleep=s;
+    state.sleep[dayKey()]=cur;
+    save(); render();
+    toast("😴 已记录睡眠");
   }
 
   // ---------- 反馈 ----------
@@ -1451,6 +1541,7 @@
     }
     base.moods = mergeObj(base.moods, other.moods);
     base.energies = mergeObj(base.energies, other.energies);
+    base.sleep = mergeObj(base.sleep, other.sleep);
 
     return base;
   }
@@ -1518,6 +1609,7 @@
     local.outDays = unionArr(local.outDays, remote.outDays);
     local.moods = mergeObj(remote.moods, local.moods);
     local.energies = mergeObj(remote.energies, local.energies);
+    local.sleep = mergeObj(remote.sleep, local.sleep);
     if(!local.name) local.name = remote.name;
     if(!local.periodStart) local.periodStart = remote.periodStart;
     // 新设备（还没产生过真实数据）直接用云端的真实任务，避免把「好久以前」的默认种子又翻出来
@@ -1699,6 +1791,7 @@
     else if(t.id==="syncModal"){ closeSyncModal(); }
     else if(t.id==="markPeriodBtn"){ markPeriod(); }
     else if(t.id==="outBtn"){ toggleOut(); }
+    else if(t.id==="saveSleepBtn"){ saveSleep(); }
     else if(t.hasAttribute("data-mood")){ setMood(parseInt(t.getAttribute("data-mood"),10)); }
     else if(t.hasAttribute("data-en")){ setEnergy(parseInt(t.getAttribute("data-en"),10)); }
     else if(t.hasAttribute("data-del")){ delTask(t.getAttribute("data-del")); }
