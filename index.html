@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v19 就是最新版（微锻炼体力减少为 +2；删除日课后彻底消失；睡眠记录 + 趋势图；足迹不丢）">v19</span>
+    <span class="ver" title="版本号：看到 v20 就是最新版（血条平衡：日课扣血 -12、小憩回血 +15 且不再送体力）">v20</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -455,9 +455,8 @@
   // ---------- 常量 ----------
   var STAT_GAIN = 5;      // 完成日课：属性 +
   var XP_GAIN = 10;       // 完成日课：经验 +
-  var HP_COST = 6;        // 完成日课：血条 -
-  var REST_HP = 30;       // 小憩回血
-  var REST_STR = 3;       // 小憩附带体力
+  var HP_COST = 12;       // 完成日课：血条 -
+  var REST_HP = 15;       // 小憩回血
   var REST_LIMIT = 2;     // 每日小憩次数
   var XP_PER_LEVEL = 100;
   var PERIOD_DAYS = 7;        // 经期总天数
@@ -1441,9 +1440,8 @@
     if(state.restUsed>=REST_LIMIT){ toast("今日小憩次数已用完"); return; }
     state.restUsed++;
     state.hp=clamp(state.hp+REST_HP,0,100);
-    state.stats.str=clamp(state.stats.str+REST_STR,0,999);
-    flashStat("hp"); flashStat("str");
-    afterChange("🛌 小憩：+30 血 · +3 体力");
+    flashStat("hp");
+    afterChange("🛌 小憩：+"+REST_HP+" 血");
   }
 
   function showReveal(cards){
