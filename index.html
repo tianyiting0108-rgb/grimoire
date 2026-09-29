@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v18 就是最新版（删除日课后彻底消失，不再被同步复活；睡眠记录 + 趋势图；足迹列表显示全部，不丢记录）">v18</span>
+    <span class="ver" title="版本号：看到 v19 就是最新版（微锻炼体力减少为 +2；删除日课后彻底消失；睡眠记录 + 趋势图；足迹不丢）">v19</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -568,7 +568,7 @@
       {id:uid(),name:"设置周一（9/14）定时发送 2 封套瓷信",stat:"will",done:false},
       {id:uid(),name:"读 1 篇统计遗传方法论文",stat:"int",done:false,repeat:"daily",habit:true},
       {id:uid(),name:"锻炼 30 分钟",stat:"str",done:false,repeat:"daily",habit:true},
-      {id:uid(),name:"微锻炼（动了就算）",stat:"str",done:false,repeat:"daily",habit:true}
+      {id:uid(),name:"微锻炼（动了就算）",stat:"str",done:false,repeat:"daily",habit:true,w:0.4}
     ];
   }
 
@@ -1335,7 +1335,10 @@
   function sndUnlock(){ensureAudio();tone(1046,0,0.18,"triangle",0.08);tone(1568,0.08,0.3,"triangle",0.06);}
 
   // ---------- 逻辑 ----------
-  function taskWeight(t){ return (t.w && t.w>0) ? t.w : 1; }
+  function taskWeight(t){
+    if(t && t.name && t.name.indexOf("微锻炼")===0) return 0.4;   // 微锻炼：小动作少加一点体力
+    return (t.w && t.w>0) ? t.w : 1;
+  }
   function applyTask(t,sign){
     // sign: +1 完成, -1 撤销；奖励按「份量」w 放大（普通 1，重活加更多）
     var w=taskWeight(t);
