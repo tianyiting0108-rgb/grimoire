@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v20 就是最新版（血条平衡：日课扣血 -12、小憩回血 +15 且不再送体力）">v20</span>
+    <span class="ver" title="版本号：看到 v21 就是最新版（修复睡眠时长：凌晨入睡不再多算 24 小时）">v21</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1243,14 +1243,21 @@
     var h=Math.floor(m/60), r=m%60;
     return h+"h"+(r<10?"0":"")+r;
   }
+  function axisMin(m){   // 时钟分钟 → 图轴分钟（18:00 起算，凌晨 0–18 点算作次日 +1440）
+    return (m < 18*60) ? m + 1440 : m;
+  }
+  function sleepDurMins(s,w){   // 入睡/起床时钟分钟 → 睡眠时长（起床早于入睡才跨午夜，自动 +1440）
+    return (w > s) ? (w - s) : (w + 1440 - s);
+  }
   function sleepStats(days){
-    var ws=0, ss=0, wn=0, sn=0;
+    var ws=0, ss=0, wn=0, sn=0, dsum=0, dn=0;
     days.forEach(function(d){
       var w=timeToMin(d.wake), s=timeToMin(d.sleep);
       if(w!=null){ ws+=w; wn++; }
       if(s!=null){ ss+=s; sn++; }
+      if(w!=null && s!=null){ dsum+=sleepDurMins(s,w); dn++; }
     });
-    return {avgW: wn?minToTime(ws/wn):null, avgS: sn?minToTime(ss/sn):null, dur:(wn&&sn)?fmtDur((ws/wn+1440)-(ss/sn)):null};
+    return {avgW: wn?minToTime(ws/wn):null, avgS: sn?minToTime(ss/sn):null, dur: dn?fmtDur(dsum/dn):null};
   }
   function sleepChartHTML(){
     var sleep = state.sleep || {};
@@ -1273,12 +1280,12 @@
       var x=(n>1)? i*step : W/2;
       var w=timeToMin(d.wake), s=timeToMin(d.sleep);
       if(w!=null && s!=null){
-        var y1=yy(s), y2=yy(w+1440);
+        var y1=yy(axisMin(s)), y2=yy(axisMin(w));
         bars += '<line x1="'+x+'" y1="'+y1+'" x2="'+x+'" y2="'+y2+'" stroke="#8f7bd0" stroke-width="7" stroke-linecap="round" opacity="0.30"/>';
-        bars += '<text x="'+x+'" y="'+(y2-3)+'" font-size="6.5" text-anchor="middle" fill="#6b5c9e">'+fmtDur((w+1440)-s)+'</text>';
+        bars += '<text x="'+x+'" y="'+(y2-3)+'" font-size="6.5" text-anchor="middle" fill="#6b5c9e">'+fmtDur(sleepDurMins(s,w))+'</text>';
       }
-      if(w!=null){ dots += '<circle cx="'+x+'" cy="'+yy(w+1440)+'" r="2.6" fill="#e0a63a"/>'; }
-      if(s!=null){ dots += '<circle cx="'+x+'" cy="'+yy(s)+'" r="2.6" fill="#7c6fb0"/>'; }
+      if(w!=null){ dots += '<circle cx="'+x+'" cy="'+yy(axisMin(w))+'" r="2.6" fill="#e0a63a"/>'; }
+      if(s!=null){ dots += '<circle cx="'+x+'" cy="'+yy(axisMin(s))+'" r="2.6" fill="#7c6fb0"/>'; }
     });
     var ticks="";
     [18,24,30,36].forEach(function(h){
