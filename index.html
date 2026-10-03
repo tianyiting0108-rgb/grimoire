@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v21 就是最新版（修复睡眠时长：凌晨入睡不再多算 24 小时）">v21</span>
+    <span class="ver" title="版本号：看到 v22 就是最新版（睡眠图两边不再截断；新增「清空」按钮修正错误记录）">v22</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1196,6 +1196,7 @@
       +'<input type="time" id="sleepSleep" value="'+esc(sl.sleep||"")+'" title="昨晚几点入睡" style="padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:#fffdf5;color:var(--ink);font-family:inherit;font-size:12px;width:84px;">'
       +'<span style="color:var(--ink-soft);font-size:10px;">入睡</span>'
       +'<button class="ghost" id="saveSleepBtn" style="margin:0;">记</button>'
+      +'<button class="ghost" id="clearSleepBtn" style="margin:0;" title="清空所有睡眠记录，重新记录">清空</button>'
       +'</span></div>';
     html+=sleepChartHTML();
 
@@ -1271,13 +1272,13 @@
       return '<div class="life-hint">😴 记录几天起床/入睡时间，就能看到睡眠趋势图</div>';
     }
     var st=sleepStats(days);
-    var W=332, H=104, padB=12;
+    var W=332, H=104, padB=12, padX=10;
     var ymin=18*60, ymax=36*60;   // 18:00 ～ 次日 12:00
     function yy(m){ return padB + (ymax - m)/(ymax-ymin)*(H-padB); }
-    var n=days.length, step=(n>1)?(W/(n-1)):0;
+    var n=days.length, step=(n>1)?((W-2*padX)/(n-1)):0;
     var bars="", dots="";
     days.forEach(function(d,i){
-      var x=(n>1)? i*step : W/2;
+      var x=(n>1)? padX + i*step : W/2;
       var w=timeToMin(d.wake), s=timeToMin(d.sleep);
       if(w!=null && s!=null){
         var y1=yy(axisMin(s)), y2=yy(axisMin(w));
@@ -1308,6 +1309,13 @@
     state.sleep[dayKey()]=cur;
     save(); render();
     toast("😴 已记录睡眠");
+  }
+  function clearSleep(){
+    if(!confirm("确定清空所有睡眠记录吗？清空后会从云端恢复已同步的正确记录。")) return;
+    state.sleep = {};
+    save(); render();
+    toast("😴 睡眠记录已清空");
+    if(syncEnabled()) pullFromCloud();
   }
 
   // ---------- 反馈 ----------
@@ -1812,6 +1820,7 @@
     else if(t.id==="markPeriodBtn"){ markPeriod(); }
     else if(t.id==="outBtn"){ toggleOut(); }
     else if(t.id==="saveSleepBtn"){ saveSleep(); }
+    else if(t.id==="clearSleepBtn"){ clearSleep(); }
     else if(t.hasAttribute("data-mood")){ setMood(parseInt(t.getAttribute("data-mood"),10)); }
     else if(t.hasAttribute("data-en")){ setEnergy(parseInt(t.getAttribute("data-en"),10)); }
     else if(t.hasAttribute("data-del")){ delTask(t.getAttribute("data-del")); }
