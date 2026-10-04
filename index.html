@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v23 就是最新版（入睡时间自动识别上午/晚上，11点=晚上11点）">v23</span>
+    <span class="ver" title="版本号：看到 v24 就是最新版（平均入睡改为跨午夜正确平均，不再出现 05:53）">v24</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1254,8 +1254,10 @@
     var ws=0, ss=0, wn=0, sn=0, dsum=0, dn=0;
     days.forEach(function(d){
       var w=timeToMin(d.wake), s=timeToMin(d.sleep);
-      if(w!=null){ ws+=w; wn++; }
-      if(s!=null){ ss+=s; sn++; }
+      // 平均时刻用「跨午夜」的图轴时间（axisMin）再平均：把 01:30 这种凌晨时间归到次日，
+      // 避免 23:20 和 01:30 直接算术平均成 05:53 这种不存在的时刻
+      if(w!=null){ ws+=axisMin(w); wn++; }
+      if(s!=null){ ss+=axisMin(s); sn++; }
       if(w!=null && s!=null){ dsum+=sleepDurMins(s,w); dn++; }
     });
     return {avgW: wn?minToTime(ws/wn):null, avgS: sn?minToTime(ss/sn):null, dur: dn?fmtDur(dsum/dn):null};
