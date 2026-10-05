@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v24 就是最新版（平均入睡改为跨午夜正确平均，不再出现 05:53）">v24</span>
+    <span class="ver" title="版本号：看到 v25 就是最新版（手机也能自动检查并更新到最新版）">v25</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1870,7 +1870,15 @@
   setSyncStatus(syncEnabled() ? "已连接" : "未开启同步");
   if(syncEnabled()) pullFromCloud();
   if("serviceWorker" in navigator){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
+    navigator.serviceWorker.register("sw.js", {updateViaCache:"none"}).then(function(reg){
+      reg.update().catch(function(){});   // 每次打开都主动查一次有没有新版本
+    }).catch(function(){});
+    var _swRefreshing=false;
+    navigator.serviceWorker.addEventListener("controllerchange", function(){
+      if(_swRefreshing) return;
+      _swRefreshing=true;
+      location.reload();   // 新版接管后自动刷新，让手机也能看到最新版
+    });
   }
   setInterval(function(){
     // 每 30s：检查是否跨天 + 刷新倒计时 + 云端同步（只在页面可见时）
