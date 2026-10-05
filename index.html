@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v25 就是最新版（手机也能自动检查并更新到最新版）">v25</span>
+    <span class="ver" title="版本号：看到 v26 就是最新版">v26</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -724,7 +724,6 @@
     });
     localStorage.setItem(FLAG,"1");
     persist();
-    if(added) pushSeed();
   }
   // 永远补回已知的 11 条打卡足迹（按日期+任务名去重，幂等），防止旧设备同步把它们冲掉
   function seedHistoryRecover(){
@@ -1705,7 +1704,6 @@
   }
   function pushToCloud(){
     if(!syncEnabled()) return;
-    if(!state._ts){ state._ts=Date.now(); persist(); }
     fetch(apiUrl(),{headers:getHeaders()})
       .then(function(r){ return r.status===404 ? null : (r.ok ? r.json() : Promise.reject(new Error("get "+r.status))); })
       .then(function(j){
@@ -1870,15 +1868,10 @@
   setSyncStatus(syncEnabled() ? "已连接" : "未开启同步");
   if(syncEnabled()) pullFromCloud();
   if("serviceWorker" in navigator){
+    // 每次打开都主动查一次新版（updateViaCache:none 避免用缓存的旧 sw.js），但绝不自动 reload
     navigator.serviceWorker.register("sw.js", {updateViaCache:"none"}).then(function(reg){
-      reg.update().catch(function(){});   // 每次打开都主动查一次有没有新版本
+      reg.update().catch(function(){});
     }).catch(function(){});
-    var _swRefreshing=false;
-    navigator.serviceWorker.addEventListener("controllerchange", function(){
-      if(_swRefreshing) return;
-      _swRefreshing=true;
-      location.reload();   // 新版接管后自动刷新，让手机也能看到最新版
-    });
   }
   setInterval(function(){
     // 每 30s：检查是否跨天 + 刷新倒计时 + 云端同步（只在页面可见时）
