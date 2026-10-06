@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v26 就是最新版">v26</span>
+    <span class="ver" title="版本号：看到 v27 就是最新版">v27</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -1629,7 +1629,7 @@
     return out;
   }
   // 把「云端」数据合并进「本地」：各字段取并集/取大，任何一边都不丢。返回是否产生了变化。
-  function syncMerge(local, remote){
+  function syncMerge(local, remote, preferRemote){
     var before=JSON.stringify(local);
     local.xp = maxNum(local.xp, remote.xp);
     local.totalDone = maxNum(local.totalDone, remote.totalDone);
@@ -1642,9 +1642,10 @@
     local.history = mergeHistory(local.history, remote.history);
     local.unlocked = unionArr(local.unlocked, remote.unlocked);
     local.outDays = unionArr(local.outDays, remote.outDays);
-    local.moods = mergeObj(remote.moods, local.moods);
-    local.energies = mergeObj(remote.energies, local.energies);
-    local.sleep = mergeObj(remote.sleep, local.sleep);
+    // 睡眠/心情/精力：拉取时以云端为准（把别处改对的覆盖过来）；推送时以本机为准（本机的修改上传）
+    local.moods = preferRemote ? mergeObj(local.moods, remote.moods) : mergeObj(remote.moods, local.moods);
+    local.energies = preferRemote ? mergeObj(local.energies, remote.energies) : mergeObj(remote.energies, local.energies);
+    local.sleep = preferRemote ? mergeObj(local.sleep, remote.sleep) : mergeObj(remote.sleep, local.sleep);
     if(!local.name) local.name = remote.name;
     if(!local.periodStart) local.periodStart = remote.periodStart;
     // 新设备（还没产生过真实数据）直接用云端的真实任务，避免把「好久以前」的默认种子又翻出来
@@ -1712,7 +1713,7 @@
           sha=j.sha;
           try{
             var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-            syncMerge(state, remote);   // 先把云端数据并进来，任何一边都不丢
+            syncMerge(state, remote, false);   // 推送：本机的睡眠/心情修改优先，云端数据一并带上不丢
             persist();
           }catch(e){}
         }
@@ -1732,7 +1733,7 @@
       .then(function(j){
         if(!j){ pushToCloud(); return; }
         var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-        var changed=syncMerge(state, remote);   // 双向合并，任何一边都不丢
+        var changed=syncMerge(state, remote, true);   // 拉取：云端已改对的睡眠/心情覆盖本机旧值
         // 云端足迹被旧设备冲掉过、而本地还留着 → 也算有变化，推回云端补齐
         if(!changed && (state.history||[]).length > (remote.history||[]).length) changed=true;
         persist();
@@ -1761,7 +1762,7 @@
         .then(function(j){
           if(j){
             var remote=JSON.parse(b64Decode(j.content.replace(/\s+/g,"")));
-            syncMerge(state, remote);
+            syncMerge(state, remote, true);
             persist();
             render();
             pushToCloud();
