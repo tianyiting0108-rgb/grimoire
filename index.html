@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v27 就是最新版">v27</span>
+    <span class="ver" title="版本号：看到 v28 就是最新版">v28</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -545,7 +545,6 @@
       restUsed:0,
       dayKey:"",
       quests:[
-        {id:uid(),name:"🇪🇲 EMBL 国际 PhD（策略 B）",deadline:"2026-10-12",steps:[{name:"确定意向组（Stegle/Birney/Lees…）",done:false},{name:"准备申请材料",done:false},{name:"确认 2 位推荐人",done:false},{name:"提交",done:false}]},
         {id:uid(),name:"🇨🇭 ETH/UZH Life Science Zurich Graduate School",deadline:"2026-11-01",steps:[{name:"选 Evolutionary + Computational Biology",done:false},{name:"准备材料",done:false},{name:"提交",done:false}]},
         {id:uid(),name:"🇨🇳 CSC 国家留学基金委奖学金申请",deadline:"2027-01-15",steps:[{name:"了解 CSC 申请要求与项目",done:false},{name:"准备材料",done:false},{name:"提交",done:false}]}
       ],
@@ -649,6 +648,7 @@
     seedLife();
     seedTasks914();
     seedHistoryRecover();
+    delQuestEmbl();
     recoverFromLedger();
   }
   function persist(){
@@ -765,6 +765,16 @@
       persist();
       if(syncEnabled()) schedulePush();   // 补回的足迹立即推回云端，防止再被旧设备冲掉
     }
+  }
+  // 一次性：删除已放弃的主线任务 EMBL（按名字删，幂等，只删一次）
+  function delQuestEmbl(){
+    var FLAG="grimoire_del_quest_embl";
+    if(localStorage.getItem(FLAG)) return;
+    var name="🇪🇲 EMBL 国际 PhD（策略 B）";
+    var before=(state.quests||[]).length;
+    state.quests=(state.quests||[]).filter(function(q){ return q.name!==name; });
+    localStorage.setItem(FLAG,"1");
+    if(state.quests.length!==before) persist();
   }
   function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
   function levelOf(s){return 1 + Math.floor(s.xp / XP_PER_LEVEL);}
@@ -1667,6 +1677,8 @@
     lq.forEach(addQ);
     rq.forEach(addQ);
     local.quests = qorder.map(function(k){ return qmap[k]; });
+    // 已放弃的主线任务永远不再出现（即使有旧设备还留着、又推回云端）
+    local.quests = local.quests.filter(function(q){ return q.name!=="🇪🇲 EMBL 国际 PhD（策略 B）"; });
     return JSON.stringify(local)!==before;
   }
   // 只把本地「多出来的任务」并进云端；云端已有成长数值/足迹一律保留，绝不用旧设备数据覆盖
