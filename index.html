@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v28 就是最新版">v28</span>
+    <span class="ver" title="版本号：看到 v29 就是最新版">v29</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -555,7 +555,8 @@
       moods:{},
       energies:{},
       sleep:{},
-      deletedTasks:[]
+      deletedTasks:[],
+      deletedQuests:[]
     };
   }
   function defaultTasks(){
@@ -766,15 +767,16 @@
       if(syncEnabled()) schedulePush();   // 补回的足迹立即推回云端，防止再被旧设备冲掉
     }
   }
-  // 一次性：删除已放弃的主线任务 EMBL（按名字删，幂等，只删一次）
+  // 一次性：删除已放弃的主线任务 EMBL（按名字删+墓碑，幂等，只删一次）
   function delQuestEmbl(){
     var FLAG="grimoire_del_quest_embl";
     if(localStorage.getItem(FLAG)) return;
     var name="🇪🇲 EMBL 国际 PhD（策略 B）";
-    var before=(state.quests||[]).length;
+    state.deletedQuests = state.deletedQuests||[];
+    if(state.deletedQuests.indexOf(name)<0) state.deletedQuests.push(name);
     state.quests=(state.quests||[]).filter(function(q){ return q.name!==name; });
     localStorage.setItem(FLAG,"1");
-    if(state.quests.length!==before) persist();
+    persist();
   }
   function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
   function levelOf(s){return 1 + Math.floor(s.xp / XP_PER_LEVEL);}
@@ -934,26 +936,32 @@
 
   function renderQuests(){
     var wrap=document.getElementById("quests");
-    if(state.quests.length===0){wrap.innerHTML='<div class="hint">暂无主线任务。</div>';return;}
     var html="";
+    if(!state.quests || state.quests.length===0){ html+='<div class="hint">暂无主线任务。</div>'; }
     var today=new Date(); today.setHours(0,0,0,0);
-    state.quests.forEach(function(q){
+    (state.quests||[]).forEach(function(q){
       var done=q.steps.filter(function(s){return s.done;}).length;
       var total=q.steps.length;
       var pct= total? Math.round(done/total*100):0;
       var cd=countdownHTML(q.deadline,today);
       html+='<div class="quest">'
         +'<div class="quest-head"><span class="quest-name">'+esc(q.name)+'</span>'
-        +'<span class="countdown '+cd.cls+'">'+cd.text+'</span></div>';
+        +'<span class="countdown '+cd.cls+'">'+cd.text+'</span>'
+        +'<span class="quest-edit" data-rename="'+q.id+'">✏️改名</span>'
+        +'<span class="quest-edit" data-delq="'+q.id+'" style="color:var(--wine);border-color:var(--wine);">🗑删除</span></div>';
       q.steps.forEach(function(st){
         html+='<div class="quest-step'+(st.done?" done":"")+'">'
           +'<input type="checkbox" data-quest="'+q.id+'" data-step="'+esc(st.name)+'" '+(st.done?"checked":"")+'>'
-          +'<label>'+esc(st.name)+'</label></div>';
+          +'<label>'+esc(st.name)+'</label>'
+          +'<span class="quest-edit" data-delstep="'+q.id+'" data-stepname="'+esc(st.name)+'">✕</span></div>';
       });
       html+='<div class="quest-progress"><i style="width:'+pct+'%"></i></div>'
-        +'<div style="margin-top:6px;text-align:right;"><span class="quest-edit" data-deadline="'+q.id+'">🗓 '+esc(q.deadline)+'（点击改期）</span></div>'
-        +'</div>';
+        +'<div style="margin-top:6px;text-align:right;">'
+        +'<span class="quest-edit" data-deadline="'+q.id+'">🗓 '+esc(q.deadline||"无截止")+'（点击改期）</span>'
+        +'<span class="quest-edit" data-addstep="'+q.id+'">＋步骤</span>'
+        +'</div></div>';
     });
+    html+='<div style="margin-top:10px;text-align:center;"><button class="ghost" id="addQuestBtn">＋ 添加主线任务</button></div>';
     wrap.innerHTML=html;
   }
 
@@ -1468,6 +1476,49 @@
     else{ toast("日期格式不对，应为 YYYY-MM-DD"); }
   }
 
+  function addQuest(){
+    var name=prompt("新主线任务叫什么名字？","");
+    if(name===null) return;
+    name=name.trim();
+    if(!name){ toast("名字不能为空"); return; }
+    var dl=prompt("截止日期（格式 YYYY-MM-DD，没有就留空）：","");
+    var q={id:uid(), name:name, deadline:"", steps:[]};
+    if(dl!==null && /^\d{4}-\d{2}-\d{2}$/.test(dl.trim())) q.deadline=dl.trim();
+    state.quests=state.quests||[];
+    state.quests.push(q);
+    state.deletedQuests=(state.deletedQuests||[]).filter(function(n){ return n!==name; });
+    save(); render();
+    toast("已添加主线「"+name+"」");
+  }
+  function delQuest(qid){
+    var q=(state.quests||[]).find(function(x){return x.id===qid;}); if(!q)return;
+    if(!confirm("删除主线「"+q.name+"」？（勾过的足迹/经验不受影响）")) return;
+    state.deletedQuests=state.deletedQuests||[];
+    if(state.deletedQuests.indexOf(q.name)<0) state.deletedQuests.push(q.name);
+    state.quests=state.quests.filter(function(x){return x.id!==qid;});
+    save(); render();
+    toast("已删除主线「"+q.name+"」");
+  }
+  function renameQuest(qid){
+    var q=(state.quests||[]).find(function(x){return x.id===qid;}); if(!q)return;
+    var v=prompt("修改主线任务名字：", q.name||"");
+    if(v===null) return;
+    v=v.trim();
+    if(v){ q.name=v; save(); render(); }
+  }
+  function addStep(qid){
+    var q=(state.quests||[]).find(function(x){return x.id===qid;}); if(!q)return;
+    var v=prompt("添加一个步骤：","");
+    if(v===null) return;
+    v=v.trim();
+    if(v){ q.steps.push({name:v,done:false}); save(); render(); }
+  }
+  function delStep(qid,stepName){
+    var q=(state.quests||[]).find(function(x){return x.id===qid;}); if(!q)return;
+    q.steps=q.steps.filter(function(s){return s.name!==stepName;});
+    save(); render();
+  }
+
   function rest(){
     var today=dayKey();
     if(state.restDate!==today){ state.restDate=today; state.restUsed=0; }
@@ -1677,8 +1728,9 @@
     lq.forEach(addQ);
     rq.forEach(addQ);
     local.quests = qorder.map(function(k){ return qmap[k]; });
-    // 已放弃的主线任务永远不再出现（即使有旧设备还留着、又推回云端）
-    local.quests = local.quests.filter(function(q){ return q.name!=="🇪🇲 EMBL 国际 PhD（策略 B）"; });
+    // 已删除的主线任务永远不再出现（按名字墓碑，即使有旧设备还留着、又推回云端）
+    local.deletedQuests = unionArr(local.deletedQuests, remote.deletedQuests);
+    local.quests = local.quests.filter(function(q){ return !q || (local.deletedQuests||[]).indexOf(q.name)<0; });
     return JSON.stringify(local)!==before;
   }
   // 只把本地「多出来的任务」并进云端；云端已有成长数值/足迹一律保留，绝不用旧设备数据覆盖
@@ -1846,6 +1898,11 @@
     else if(t.hasAttribute("data-en")){ setEnergy(parseInt(t.getAttribute("data-en"),10)); }
     else if(t.hasAttribute("data-del")){ delTask(t.getAttribute("data-del")); }
     else if(t.hasAttribute("data-deadline")){ editDeadline(t.getAttribute("data-deadline")); }
+    else if(t.id==="addQuestBtn"){ addQuest(); }
+    else if(t.hasAttribute("data-delq")){ delQuest(t.getAttribute("data-delq")); }
+    else if(t.hasAttribute("data-rename")){ renameQuest(t.getAttribute("data-rename")); }
+    else if(t.hasAttribute("data-addstep")){ addStep(t.getAttribute("data-addstep")); }
+    else if(t.hasAttribute("data-delstep")){ delStep(t.getAttribute("data-delstep"), t.getAttribute("data-stepname")); }
     else if(t.id==="openCodexBtn"){ openCodex(); }
     else if(t.id==="closeCodexBtn"){ closeCodex(); }
   });
