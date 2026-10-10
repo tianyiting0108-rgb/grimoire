@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v29 就是最新版">v29</span>
+    <span class="ver" title="版本号：看到 v30 就是最新版">v30</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -539,6 +539,7 @@
       stats:{int:0,str:0,cha:0,will:0},
       hp:100,
       hpMin:100,
+      hpTs:0,
       totalDone:0,
       lastLevel:1,
       restDate:"",
@@ -851,6 +852,8 @@
       return false;                               // 完成的一次性任务删掉
     });
     state.restDate=k; state.restUsed=0;
+    state.hp=100;   // 新的一天，睡饱了，血条回满（最低纪录 hpMin 不受影响）
+    state.hpTs = Date.now();
     state.dayKey=k;
     persist(); render();
     toast("🌅 新的一天，每日日课已刷新");
@@ -1387,6 +1390,7 @@
     state.xp = clamp(state.xp + sign*XP_GAIN*w, 0, 99999);
     state.hp = clamp(state.hp - sign*HP_COST, 0, 100);
     state.hpMin = Math.min(state.hpMin, state.hp);
+    state.hpTs = Date.now();
     state.totalDone = clamp(state.totalDone + sign, 0, 999999);
   }
 
@@ -1525,6 +1529,7 @@
     if(state.restUsed>=REST_LIMIT){ toast("今日小憩次数已用完"); return; }
     state.restUsed++;
     state.hp=clamp(state.hp+REST_HP,0,100);
+    state.hpTs = Date.now();
     flashStat("hp");
     afterChange("🛌 小憩：+"+REST_HP+" 血");
   }
@@ -1695,7 +1700,10 @@
     local.xp = maxNum(local.xp, remote.xp);
     local.totalDone = maxNum(local.totalDone, remote.totalDone);
     local.lastLevel = maxNum(local.lastLevel, remote.lastLevel);
-    local.hp = maxNum(local.hp, remote.hp);
+    // 血条是「当前精力」：不能用 maxNum（否则掉的血每次同步都被顶回满血，永远看不见）。
+    // 按 hpTs（血条最近一次变化时间）取新值——谁更新用谁，每天回满也靠这个。
+    if((remote.hpTs||0) > (local.hpTs||0) && remote.hp!==undefined && remote.hp!==null){ local.hp = remote.hp; }
+    local.hpTs = maxNum(local.hpTs||0, remote.hpTs||0);
     local.hpMin = minNum(local.hpMin, remote.hpMin);
     local.stats = local.stats || {int:0,str:0,cha:0,will:0};
     var rs = remote.stats || {};
