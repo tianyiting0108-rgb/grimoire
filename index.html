@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v30 就是最新版">v30</span>
+    <span class="ver" title="版本号：看到 v31 就是最新版">v31</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -568,7 +568,8 @@
       {id:uid(),name:"设置周一（9/14）定时发送 2 封套瓷信",stat:"will",done:false},
       {id:uid(),name:"读 1 篇统计遗传方法论文",stat:"int",done:false,repeat:"daily",habit:true},
       {id:uid(),name:"锻炼 30 分钟",stat:"str",done:false,repeat:"daily",habit:true},
-      {id:uid(),name:"微锻炼（动了就算）",stat:"str",done:false,repeat:"daily",habit:true,w:0.4}
+      {id:uid(),name:"微锻炼（动了就算）",stat:"str",done:false,repeat:"daily",habit:true,w:0.4},
+      {id:uid(),name:"为申请往前推一步（发信/改稿都算）",stat:"will",done:false,repeat:"daily",habit:true}
     ];
   }
 
@@ -797,6 +798,7 @@
     if(/锻炼/.test(name)) return true;
     if(/篇/.test(name) && /论文|文献/.test(name)) return true;   // 读/看 X 篇论文/文献
     if(/读论文|看论文|读文献|看文献/.test(name)) return true;    // 直接写「读论文」「看论文」这类
+    if(/为申请往前推/.test(name)) return true;                    // 每日意志：为申请往前推一步
     return false;
   }
   function normalizeHabits(){
