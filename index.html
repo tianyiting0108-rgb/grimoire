@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v31 就是最新版">v31</span>
+    <span class="ver" title="版本号：看到 v32 就是最新版">v32</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -458,6 +458,7 @@
   var HP_COST = 12;       // 完成日课：血条 -
   var REST_HP = 15;       // 小憩回血
   var REST_LIMIT = 2;     // 每日小憩次数
+  var SLEEP_RECOVER = 40; // 跨天：睡觉回血（不回满，连轴转才会累）
   var XP_PER_LEVEL = 100;
   var PERIOD_DAYS = 7;        // 经期总天数
   var NO_EXERCISE_DAYS = 5;   // 前 N 天暂停体力日课（后两天可恢复锻炼）
@@ -854,7 +855,7 @@
       return false;                               // 完成的一次性任务删掉
     });
     state.restDate=k; state.restUsed=0;
-    state.hp=100;   // 新的一天，睡饱了，血条回满（最低纪录 hpMin 不受影响）
+    state.hp=clamp(state.hp + SLEEP_RECOVER, 0, 100);   // 跨天：睡觉回血 +40，不回满——连轴转才会越掉越低（最低纪录 hpMin 不受影响）
     state.hpTs = Date.now();
     state.dayKey=k;
     persist(); render();
