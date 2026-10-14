@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v32 就是最新版">v32</span>
+    <span class="ver" title="版本号：看到 v33 就是最新版">v33</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -553,6 +553,7 @@
       unlocked:[],
       history:[],
       periodStart:"",
+      periodHistory:[],
       outDays:[],
       moods:{},
       energies:{},
@@ -1149,12 +1150,22 @@
     var n=daysBetween(state.periodStart, dayKey());
     return n>=0 && n<NO_EXERCISE_DAYS;
   }
+  function cycleLen(){
+    var h=(state.periodHistory||[]).slice().sort();
+    if(h.length>=2){
+      var sum=0, cnt=0;
+      for(var i=1;i<h.length;i++){ sum+=daysBetween(h[i-1], h[i]); cnt++; }
+      if(cnt) return Math.round(sum/cnt);
+    }
+    return CYCLE_DAYS;
+  }
   function periodInfo(){
     if(!state.periodStart) return null;
     var n=daysBetween(state.periodStart, dayKey());
-    if(n<0) return {before:true};
-    if(n>=PERIOD_DAYS) return {after:true, next:addDaysKey(state.periodStart, CYCLE_DAYS)};
-    return {day:n+1, total:PERIOD_DAYS, pauseLeft:Math.max(0, NO_EXERCISE_DAYS-(n+1)), next:addDaysKey(state.periodStart, CYCLE_DAYS)};
+    var cyc=cycleLen();
+    if(n<0) return {before:true, next:addDaysKey(state.periodStart, cyc)};
+    if(n>=PERIOD_DAYS) return {after:true, next:addDaysKey(state.periodStart, cyc)};
+    return {day:n+1, total:PERIOD_DAYS, pauseLeft:Math.max(0, NO_EXERCISE_DAYS-(n+1)), next:addDaysKey(state.periodStart, cyc)};
   }
   function outStreak(){
     var set={};
@@ -1167,17 +1178,21 @@
   function renderLife(){
     var html="";
 
-    // 经期
+    // 经期（不规律没关系：哪天真来了，就点「今天来了」，App 按实际记录算下次，而不是按固定周期猜）
     var pi=periodInfo();
+    var hist=(state.periodHistory||[]).slice().sort();
     if(!state.periodStart){
       html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">还没记录</span><button class="ghost" id="markPeriodBtn">今天来了</button></div>';
     }else if(pi && pi.day){
       html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">第 '+pi.day+' / '+pi.total+' 天</span></div>';
       html+='<div class="life-hint">'+(pi.pauseLeft>0?('体力日课暂停，还剩 '+pi.pauseLeft+' 天可恢复'):'现在可以恢复锻炼了')+' · 预计下次 '+fmtDay(pi.next)+'</div>';
     }else if(pi && pi.before){
-      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">'+fmtDay(state.periodStart)+' 开始（还没到）</span></div>';
+      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">'+fmtDay(state.periodStart)+' 开始（还没到）</span><button class="ghost" id="markPeriodBtn">今天来了</button></div>';
     }else{
-      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">已结束 · 预计下次 '+fmtDay(pi.next)+'</span></div>';
+      html+='<div class="life-row"><span class="life-label">🌙 经期</span><span class="life-val">已结束 · 预计下次 '+fmtDay(pi.next)+'</span><button class="ghost" id="markPeriodBtn">今天来了</button></div>';
+    }
+    if(hist.length>=2){
+      html+='<div class="life-hint">周期约 '+cycleLen()+' 天（按 '+hist.length+' 次记录平均）· '+hist.map(fmtDay).join(' · ')+'</div>';
     }
 
     // 出门
@@ -1226,7 +1241,15 @@
     document.getElementById("life").innerHTML=html;
   }
   function markPeriod(){
-    state.periodStart = dayKey();
+    var today=dayKey();
+    state.periodHistory = state.periodHistory||[];
+    // 把「上一次」的开始日也记进历史：这样第一次点就会把 9/12 这类旧开始日保留下来，不规律也能算出真实周期
+    if(state.periodStart && state.periodStart!==today && state.periodHistory.indexOf(state.periodStart)<0){
+      state.periodHistory.push(state.periodStart);
+    }
+    state.periodStart = today;
+    if(state.periodHistory.indexOf(today)<0) state.periodHistory.push(today);
+    state.periodHistory.sort();
     save(); render();
     toast("🌙 已记录经期开始，体力日课暂停 "+PERIOD_DAYS+" 天");
   }
@@ -1719,7 +1742,9 @@
     local.energies = preferRemote ? mergeObj(local.energies, remote.energies) : mergeObj(remote.energies, local.energies);
     local.sleep = preferRemote ? mergeObj(local.sleep, remote.sleep) : mergeObj(remote.sleep, local.sleep);
     if(!local.name) local.name = remote.name;
-    if(!local.periodStart) local.periodStart = remote.periodStart;
+    // 经期：开始日取「更晚」的那次（日期字符串可直接比大小），历史开始日取并集，任何一边都不丢
+    if((remote.periodStart||"") > (local.periodStart||"")) local.periodStart = remote.periodStart;
+    local.periodHistory = unionArr(local.periodHistory, remote.periodHistory);
     // 新设备（还没产生过真实数据）直接用云端的真实任务，避免把「好久以前」的默认种子又翻出来
     local.tasks = (local._ts===0 && remote.tasks && remote.tasks.length) ? remote.tasks : mergeTasks(local.tasks, remote.tasks);
     local.deletedTasks = unionArr(local.deletedTasks, remote.deletedTasks);
