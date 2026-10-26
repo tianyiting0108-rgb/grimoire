@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v33 就是最新版">v33</span>
+    <span class="ver" title="版本号：看到 v34 就是最新版">v34</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -459,6 +459,9 @@
   var REST_HP = 15;       // 小憩回血
   var REST_LIMIT = 2;     // 每日小憩次数
   var SLEEP_RECOVER = 40; // 跨天：睡觉回血（不回满，连轴转才会累）
+  var QUEST_STEP_XP = 10; // 主线：每完成一个步骤 +经验
+  var QUEST_XP = 50;      // 主线：整条全部完成 +经验
+  var QUEST_WILL = 10;    // 主线：整条全部完成 +意志（扛住一整个大目标 = 意志）
   var XP_PER_LEVEL = 100;
   var PERIOD_DAYS = 7;        // 经期总天数
   var NO_EXERCISE_DAYS = 5;   // 前 N 天暂停体力日课（后两天可恢复锻炼）
@@ -1486,14 +1489,41 @@
     save(); render();
   }
 
+  function questAllDone(q){
+    var sts=q.steps||[];
+    return sts.length>0 && sts.every(function(s){return s.done;});
+  }
   function toggleStep(qid,stepName){
     var q=state.quests.find(function(x){return x.id===qid;}); if(!q)return;
     var st=q.steps.find(function(s){return s.name===stepName;}); if(!st)return;
+    var wasComplete=questAllDone(q);
     st.done=!st.done;
-    var done=q.steps.filter(function(s){return s.done;}).length;
-    var total=q.steps.length;
-    save(); render();
-    if(total && done===total){ toast("🏆 主线「"+q.name+"」全部步骤完成！"); }
+    var isComplete=questAllDone(q);
+    var msg;
+    if(st.done){
+      state.xp = clamp(state.xp + QUEST_STEP_XP, 0, 99999);
+      if(isComplete && !wasComplete){
+        // 整条主线刚好完成：额外给一笔大的（意志 = 扛住一整个大目标）
+        state.xp = clamp(state.xp + QUEST_XP, 0, 99999);
+        state.stats.will = clamp(state.stats.will + QUEST_WILL, 0, 999);
+        msg = "🏆 主线「"+q.name+"」完成！+"+QUEST_XP+" 经验 · +"+QUEST_WILL+" 意志";
+        sndUnlock(); flashStat("will");
+      }else{
+        msg = "✅ 步骤完成：+"+QUEST_STEP_XP+" 经验";
+        sndDing();
+      }
+    }else{
+      state.xp = clamp(state.xp - QUEST_STEP_XP, 0, 99999);
+      if(!isComplete && wasComplete){
+        // 撤掉最后一个勾，把整条主线的完成奖励一起收回（不会重复刷）
+        state.xp = clamp(state.xp - QUEST_XP, 0, 99999);
+        state.stats.will = clamp(state.stats.will - QUEST_WILL, 0, 999);
+        msg = "↩ 撤销步骤（主线完成奖励已收回）";
+      }else{
+        msg = "↩ 撤销步骤";
+      }
+    }
+    afterChange(msg);
   }
 
   function editDeadline(qid){
