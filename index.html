@@ -414,7 +414,7 @@
     <input type="file" id="importFile" accept=".json" style="display:none">
     <button id="resetBtn">⚠️ 重置</button>
     <span id="syncStatus">☁️ 未开启同步</span>
-    <span class="ver" title="版本号：看到 v34 就是最新版">v34</span>
+    <span class="ver" title="版本号：看到 v35 就是最新版">v35</span>
     <button id="syncNowBtn" class="ghost">🔄 立即同步</button>
     <button id="syncSetupBtn" class="ghost">☁️ 同步设置</button>
   </footer>
@@ -562,7 +562,8 @@
       energies:{},
       sleep:{},
       deletedTasks:[],
-      deletedQuests:[]
+      deletedQuests:[],
+      completedQuests:[]
     };
   }
   function defaultTasks(){
@@ -657,6 +658,7 @@
     seedTasks914();
     seedHistoryRecover();
     delQuestEmbl();
+    archiveCompletedQuests();
     recoverFromLedger();
   }
   function persist(){
@@ -784,6 +786,14 @@
     state.quests=(state.quests||[]).filter(function(q){ return q.name!==name; });
     localStorage.setItem(FLAG,"1");
     persist();
+  }
+  function archiveCompletedQuests(){
+    // 幂等：把「所有步骤都勾完、但还挂在进行中」的主线补归档 + 补足迹（旧数据迁移用，之后每次载入都会兜底对齐）
+    var before=JSON.stringify({q:state.quests, c:state.completedQuests, h:state.history});
+    (state.quests||[]).slice().forEach(function(q){
+      if(questAllDone(q)) archiveQuest(q, dayKey());
+    });
+    if(JSON.stringify({q:state.quests, c:state.completedQuests, h:state.history})!==before) persist();
   }
   function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n));}
   function levelOf(s){return 1 + Math.floor(s.xp / XP_PER_LEVEL);}
@@ -972,6 +982,15 @@
         +'</div></div>';
     });
     html+='<div style="margin-top:10px;text-align:center;"><button class="ghost" id="addQuestBtn">＋ 添加主线任务</button></div>';
+    if(state.completedQuests && state.completedQuests.length){
+      html+='<div style="margin-top:16px;font-size:11px;color:var(--ink-soft);letter-spacing:1px;">✅ 已完成</div>';
+      state.completedQuests.forEach(function(q){
+        html+='<div class="quest" style="opacity:.55;">'
+          +'<div class="quest-head"><span class="quest-name">'+esc(q.name)+'</span>'
+          +'<span style="font-size:10px;color:var(--ink-soft);white-space:nowrap;">完成于 '+fmtDay(q.completedAt||"")+'</span></div>'
+          +'</div>';
+      });
+    }
     wrap.innerHTML=html;
   }
 
@@ -1493,6 +1512,19 @@
     var sts=q.steps||[];
     return sts.length>0 && sts.every(function(s){return s.done;});
   }
+  function archiveQuest(q, dateKey){
+    // 主线全部完成：记一条足迹到「历史」（铁律：足迹只增不改），并移出「进行中」到「已完成」
+    var fp = "完成主线："+q.name;
+    var h = state.history||(state.history=[]);
+    if(!h.some(function(x){ return x.d===dateKey && x.n===fp; })){ h.push({d:dateKey, n:fp, s:"will"}); }
+    ledgerAdd({d:dateKey, n:fp, s:"will"});
+    state.completedQuests = state.completedQuests||[];
+    if(!state.completedQuests.some(function(x){ return x.name===q.name; })){
+      if(!q.completedAt) q.completedAt = dateKey;
+      state.completedQuests.push(q);
+    }
+    state.quests = (state.quests||[]).filter(function(x){ return x.id!==q.id; });
+  }
   function toggleStep(qid,stepName){
     var q=state.quests.find(function(x){return x.id===qid;}); if(!q)return;
     var st=q.steps.find(function(s){return s.name===stepName;}); if(!st)return;
@@ -1503,10 +1535,11 @@
     if(st.done){
       state.xp = clamp(state.xp + QUEST_STEP_XP, 0, 99999);
       if(isComplete && !wasComplete){
-        // 整条主线刚好完成：额外给一笔大的（意志 = 扛住一整个大目标）
+        // 整条主线刚好完成：额外给一笔大的（意志 = 扛住一整个大目标），并归档到已完成
         state.xp = clamp(state.xp + QUEST_XP, 0, 99999);
         state.stats.will = clamp(state.stats.will + QUEST_WILL, 0, 999);
-        msg = "🏆 主线「"+q.name+"」完成！+"+QUEST_XP+" 经验 · +"+QUEST_WILL+" 意志";
+        archiveQuest(q, dayKey());
+        msg = "🏆 主线「"+q.name+"」完成！+"+QUEST_XP+" 经验 · +"+QUEST_WILL+" 意志 · 已归档";
         sndUnlock(); flashStat("will");
       }else{
         msg = "✅ 步骤完成：+"+QUEST_STEP_XP+" 经验";
@@ -1797,6 +1830,22 @@
     // 已删除的主线任务永远不再出现（按名字墓碑，即使有旧设备还留着、又推回云端）
     local.deletedQuests = unionArr(local.deletedQuests, remote.deletedQuests);
     local.quests = local.quests.filter(function(q){ return !q || (local.deletedQuests||[]).indexOf(q.name)<0; });
+    // 已完成的主线：按名字归档合并，并从「进行中」里剔除（旧设备没归档也能对齐，不会复活）
+    var lc=local.completedQuests||[], rc=remote.completedQuests||[], cmap={}, corder=[];
+    function addC(c){
+      if(!c||!c.name) return;
+      if(!cmap[c.name]){ cmap[c.name]=c; corder.push(c.name); }
+      else{
+        var a=cmap[c.name];
+        (c.steps||[]).forEach(function(cs,i){ if(cs.done && a.steps && a.steps[i]) a.steps[i].done=true; });
+        if(c.completedAt && !a.completedAt) a.completedAt=c.completedAt;
+      }
+    }
+    lc.forEach(addC); rc.forEach(addC);
+    local.completedQuests = corder.map(function(k){ return cmap[k]; });
+    local.quests = local.quests.filter(function(q){
+      return !q || (local.completedQuests||[]).every(function(c){ return c.name!==q.name; });
+    });
     return JSON.stringify(local)!==before;
   }
   // 只把本地「多出来的任务」并进云端；云端已有成长数值/足迹一律保留，绝不用旧设备数据覆盖
